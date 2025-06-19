@@ -1,0 +1,131 @@
+* # 忽略所有文件
+!*.* # 只记录有后缀的文件
+
+*.mp3
+*.mp4
+*.avi
+*.flv
+*.webm
+
+# 编译器生成的文件
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+*.out
+*.app
+
+# Object files
+*.ko
+*.elf
+
+# 一些特殊的文件
+# .obsidian.vimrc
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+
+# 一些目录
+**/视频/**
+**/build/**
+**/.ccls-cache/**
+**/.obsidian/**
+**/.smart-connections/**
+**/.vscode/**
+**/.idea/**
+**/CMakeFiles/**
+**/*.vscode/**
+!**/.vscode/settings.json
+!**/.vscode/tasks.json
+!**/.vscode/launch.json
+!**/.vscode/extensions.json
+
+
+/Python-100-Days-master/template/
+!/Python-100-Days-master/**/*.mp3
+!/Python-100-Days-master/**/*.mp4
+!/Python-100-Days-master/**/*.flv
+
+
+CMakeCache.txt
+.clang-format
+Makefile
+*.ninja
+*.user
+*.suo
+*.swp
+
+# 临时文件
+*~
+*.bak
+*.tmp
+*.log
+
+# 系统文件
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+
+# 依赖文件
+*.d
+*.dep
+
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+**.dSYM/**
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# 特定工具生成的文件
+*.compile_commands.json  # CMake 的编译命令文件
+
+
+
+venv
+.idea
+*.pyc
+__pycache__
+
+
