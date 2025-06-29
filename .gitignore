@@ -53,6 +53,7 @@
 
 CMakeCache.txt
 .clang-format
+.gdb_history
 Makefile
 *.ninja
 *.user
