@@ -33,6 +33,7 @@
 **/视频/**
 **/build/**
 **/.ccls-cache/**
+**/.cache/**
 **/.obsidian/**
 **/.smart-connections/**
 **/.vscode/**
