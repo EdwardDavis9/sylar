@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 cmake_policy(SET CMP0167 NEW)
 
-project( sylar-test VERSION 1.0 )
+project( sylarTest VERSION 1.0 )
 
 # 允许ccls能否正常索引头文件之类的
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD 11)
 # 可选：将所有编译输出放入单独目录中
 # set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 set(CMAKE_BUILD_TYPE "Debug")
@@ -41,6 +41,13 @@ file(GLOB_RECURSE PROJECT_SOURCES
   # ${CMAKE_SOURCE_DIR}/src/test.cc
 
 )
+
+# 获取 .ccls-cache 中的 cc 文件（需要排除的）
+file(GLOB_RECURSE CCLS_CACHE_FILES
+  ${CMAKE_SOURCE_DIR}/src/.ccls-cache/*.cc
+)
+# 从项目源文件中移除 .ccls-cache 的文件
+list(REMOVE_ITEM PROJECT_SOURCES ${CCLS_CACHE_FILES})
 
 # 排除不必要的.ccls-cache目录
 # file(GLOB_RECURSE REMOVE_CCLS_FILES "${CMAKE_SOURCE_DIR}/.ccls-cache/*")

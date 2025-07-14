@@ -4,8 +4,6 @@
 
 namespace sylar {
 
-Config::ConfigVarMap Config::s_datas;
-
 /**
  * @brief 查找字符串对应的底层结构
  * @param[in] name 待查找的字符串
@@ -13,8 +11,8 @@ Config::ConfigVarMap Config::s_datas;
  */
 ConfigVarBase::ptr Config::LookupBase(const std::string &name)
 {
-    auto it = s_datas.find(name);
-    return it == s_datas.end() ? nullptr : it->second;
+    auto it = GetDatas().find(name);
+    return it == GetDatas().end() ? nullptr : it->second;
 }
 
 /**
@@ -25,8 +23,10 @@ ConfigVarBase::ptr Config::LookupBase(const std::string &name)
  * @param[in] &output, 存放处理完成信息的list
  */
 static void
-ListAllMember(const std::string &prefix, const YAML::Node &node,
-              std::list<std::pair<std::string, const YAML::Node>> &output)
+ListAllMember(const std::string &prefix,
+              const YAML::Node &node,
+              std::list<std::pair<std::string,
+              const YAML::Node>> &output)
 {
     boost::regex error_pattern("[^a-zA-Z0-9._]");
 
@@ -44,8 +44,9 @@ ListAllMember(const std::string &prefix, const YAML::Node &node,
 
     if (node.IsMap()) {
         for (auto it = node.begin(); it != node.end(); ++it) {
-            ListAllMember(prefix.empty() ? it->first.Scalar()
-                                         : prefix + "." + it->first.Scalar(),
+            ListAllMember(prefix.empty()
+                          ? it->first.Scalar()
+                          : prefix + "." + it->first.Scalar(),
                           it->second, output);
         }
     }
@@ -80,11 +81,12 @@ void Config::LoadFromYaml(const YAML::Node &root)
             }
             else { // 如果是复杂嵌套类型
                 std::stringstream ss;
-                // ss << i.second;
-                // var->fromString(ss.str());
-                var->fromString(YAML::Dump(i.second));
+                ss << i.second;
+                var->fromString(ss.str());
+                // var->fromString(YAML::Dump(i.second));
             }
         }
+
     }
 }
 

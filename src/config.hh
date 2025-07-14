@@ -6,11 +6,21 @@
 #include "util.hh"
 #include <boost/lexical_cast.hpp>
 #include <boost/regex.hpp>
+#include <list>
 #include <yaml-cpp/yaml.h>
 #include "log.hh"
+#include <set>
+#include <unordered_set>
+#include <map>
+#include <functional>
 
 namespace sylar {
 
+/**
+ * @brief 配置变量的抽象基类，用于定义通用接口。
+ *
+ * 该类提供配置项的名称、描述以及字符串序列化与反序列化接口。
+ */
 class ConfigVarBase {
 
   public:
@@ -28,6 +38,7 @@ class ConfigVarBase {
 
     const std::string &getName() const { return m_name; }
     const std::string &getDescription() const { return m_description; }
+    virtual std::string getTypeName() const = 0;
 
     virtual std::string toString()                  = 0;
     virtual bool fromString(const std::string &val) = 0;
@@ -37,10 +48,275 @@ class ConfigVarBase {
     std::string m_description;
 };
 
-template <class T> class ConfigVar : public ConfigVarBase {
+/**
+ * @berif 转换类型
+ * @details 模板转换，通过lexical_cast 直接将输入类型转换
+ *
+ * @params[in. out] F 源类型
+ * @params[in. out] T 目标类型
+ * @return 指定类型
+ */
+template <class F, class T>
+class LexicalCast {
+  public:
+    T operator()(const F &v) { return boost::lexical_cast<T>(v); }
+};
+
+/**
+ * @berif string2vector
+ */
+template <class T>
+class LexicalCast<std::string, std::vector<T>> {
+  public:
+    std::vector<T> operator()(const std::string &v)
+    {
+        YAML::Node node = YAML::Load(v);
+        // typename std::vector<T> vec;
+        typename std::vector<T> vec;
+        std::stringstream ss;
+
+        // 写入 stringstream 中，然后 push_back 进 vec 中
+        for (size_t i = 0; i < node.size(); ++i) {
+            ss.str("");
+            ss << node[i];
+            vec.push_back(LexicalCast<std::string, T>()(ss.str()));
+        }
+        return vec;
+    }
+};
+
+/**
+ * @brief vector2string
+ */
+template <class T>
+class LexicalCast<std::vector<T>, std::string> {
+  public:
+    std::string operator()(const std::vector<T> &v)
+    {
+        YAML::Node node;
+
+        // push 进 node 节点中，然后直接读入到 stringstream 中
+        for (auto &i : v) {
+            node.push_back(YAML::Load(LexicalCast<T, std::string>()(i)));
+        }
+
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+/**
+ * @berif string2list
+ */
+template <class T>
+class LexicalCast<std::string, std::list<T>> {
+  public:
+    std::list<T> operator()(const std::string &v)
+    {
+        YAML::Node node = YAML::Load(v);
+        std::stringstream ss;
+        typename std::list<T> vec;
+        for (size_t i = 0; i < node.size(); ++i) {
+            ss.str("");
+            ss << node[i];
+            vec.push_back(LexicalCast<std::string, T>()(ss.str()));
+        }
+        return vec;
+    }
+};
+
+/**
+ * @brief list2string
+ */
+template <class T>
+class LexicalCast<std::list<T>, std::string> {
+  public:
+    std::string operator()(const std::list<T> &v)
+    {
+        YAML::Node node;
+
+        for (auto &i : v) {
+            node.push_back(YAML::Load(LexicalCast<T, std::string>()(i)));
+        }
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+/**
+ * @berif string2set
+ */
+template <class T>
+class LexicalCast<std::string, std::set<T>> {
+  public:
+    std::set<T> operator()(const std::string &v)
+    {
+        YAML::Node node = YAML::Load(v);
+        std::stringstream ss;
+        typename std::set<T> vec;
+
+        for (size_t i = 0; i < node.size(); ++i) {
+            ss.str("");
+            ss << node[i];
+            vec.insert(LexicalCast<std::string, T>()(ss.str()));
+        }
+
+        return vec;
+    }
+};
+
+/**
+ * @berif set2string
+ */
+template <class T>
+class LexicalCast<std::set<T>, std::string> {
+  public:
+    std::string operator()(const std::set<T> &v)
+    {
+        YAML::Node node;
+        for (auto &i : v) {
+            node.push_back(YAML::Load(LexicalCast<T, std::string>()(i)));
+        }
+
+        std::stringstream ss;
+        ss << node;
+
+        return ss.str();
+    };
+};
+
+/**
+ * string2unordered_set
+ */
+template <class T>
+class LexicalCast<std::string, std::unordered_set<T>> {
+
+  public:
+    std::unordered_set<T> operator()(const std::string &v)
+    {
+        YAML::Node node = YAML::Load(v);
+        typename std::unordered_set<T> vec;
+        std::stringstream ss;
+        for (size_t i = 0; i < node.size(); ++i) {
+            ss.str("");
+            ss << node[i];
+            vec.insert(LexicalCast<std::string, T>()(ss.str()));
+        }
+        return vec;
+    }
+};
+
+/**
+ * @berif unordered_set2string
+ */
+template <class T>
+class LexicalCast<std::unordered_set<T>, std::string> {
+  public:
+    std::string operator()(const std::unordered_set<T> &v)
+    {
+        YAML::Node node;
+        std::stringstream ss;
+        for (auto &i : v) {
+            node.push_back(YAML::Load(LexicalCast<T, std::string>()(i)));
+        }
+        ss << node;
+        return ss.str();
+    }
+};
+
+/**
+ * @berif string2map
+ */
+template <class T>
+class LexicalCast<std::string, std::map<std::string, T>> {
+  public:
+    std::map<std::string, T> operator()(const std::string &v)
+    {
+
+        YAML::Node node = YAML::Load(v);
+        typename std::map<std::string, T> vec;
+
+        std::stringstream ss;
+        for (auto it = node.begin(); it != node.end(); ++it) {
+            ss.str("");
+            ss << it->second;
+            vec.insert(std::make_pair(it->first.Scalar(),
+                                      LexicalCast<std::string, T>()(ss.str())));
+        }
+        return vec;
+    }
+};
+
+/**
+ * @berif map2string
+ */
+template <class T>
+class LexicalCast<std::map<std::string, T>, std::string> {
+  public:
+    std::string operator()(const std::map<std::string, T> &v)
+    {
+        YAML::Node node;
+        for (auto &i : v) {
+            node[i.first] = YAML::Load(LexicalCast<T, std::string>()(i.second));
+        }
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+/**
+ * string2unordered_map
+ */
+template <class T>
+class LexicalCast<std::string, std::unordered_map<std::string, T>> {
+  public:
+    std::unordered_map<std::string, T> operator()(const std::string &v)
+    {
+        YAML::Node node = YAML::Load(v);
+        typename std::unordered_map<std::string, T> vec;
+        std::stringstream ss;
+
+        for (auto i = node.begin(); i != node.end(); ++i) {
+            ss.str("");
+            ss << i->second;
+            vec.insert(std::make_pair(i->first.Scalar(),
+                                      LexicalCast<std::string, T>()(ss.str())));
+        }
+        return vec;
+    }
+};
+/**
+ * unordered_map2string
+ */
+template <class T>
+class LexicalCast<std::unordered_map<std::string, T>, std::string> {
+
+  public:
+    std::string operator()(const std::unordered_map<std::string, T> &v)
+    {
+        YAML::Node node;
+        for (auto &i : v) {
+            node[i.first] = YAML::Load(LexicalCast<T, std::string>()(i.second));
+        }
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
+    }
+};
+
+// FROMSTRING T operator(const std::string&);
+// TOString T operator() (const T&);
+template <class T, class FromStr = LexicalCast<std::string, T>,
+          class ToStr = LexicalCast<T, std::string>>
+class ConfigVar : public ConfigVarBase {
 
   public:
     using ptr = std::shared_ptr<ConfigVar>;
+    using on_change_cb =
+        std::function<void(const T &old_value, const T &new_value)>;
 
     ConfigVar(const std::string &name, const T &default_value,
               const std::string &description = "")
@@ -54,7 +330,8 @@ template <class T> class ConfigVar : public ConfigVarBase {
     std::string toString() override
     {
         try {
-            return boost::lexical_cast<std::string>(m_val);
+            // return boost::lexical_cast<std::string>(m_val);
+            return ToStr()(m_val);
         } catch (std::exception &e) {
             SYLAR_LOG_ERROR(SYLAR_LOG_ROOT())
                 << "<< ConfigVar::toString exception: " << e.what()
@@ -72,36 +349,64 @@ template <class T> class ConfigVar : public ConfigVarBase {
     bool fromString(const std::string &val) override
     {
         try {
-            std::cout << "[[debug::Trying to convert string]]: " << val
-                      << " to type: " << typeid(T).name() << std::endl;
-
-            m_val = boost::lexical_cast<T>(val);
+            setValue(FromStr()(val));
             return true;
         } catch (std::exception &e) {
             SYLAR_LOG_ERROR(SYLAR_LOG_ROOT())
-                << " convert string to " << typeid(m_val).name();
+                << "ConfigVar::toString exception" << e.what()
+                << " convert string to " << typeid(m_val).name()
+                << "- " << val;
         }
         return false;
     }
 
     const T getValue() const { return m_val; }
-    void setValue(const T &v) { m_val = v; }
+    void setValue(const T &v)
+    {
+        if (v == m_val) {
+            return;
+        }
+        for (auto &i: m_cbs) { // 在设置变量的时候，进行函数的回调，提示属性修改
+            i.second(m_val, v);
+        }
+        m_val = v;
+    }
+
+    std::string getTypeName() const override { return typeid(T).name(); };
+
+    void addListener(uint64_t key, on_change_cb cb) { m_cbs[key] = cb; }
+
+    void delListener(uint64_t key) { m_cbs.erase(key); }
+
+    void clearListener() { m_cbs.clear(); }
+
+    on_change_cb getListener(uint64_t key)
+    {
+        auto it = m_cbs.find(key);
+        return it == m_cbs.end() ? nullptr : it->second;
+    }
 
   private:
     T m_val;
+
+    // 变更回调函数，key 要唯一，用map将回调函数包装，可以方便的添加或删除
+    std::map<uint64_t, on_change_cb> m_cbs;
 };
 
 class Config {
   public:
-    using ConfigVarMap = std::map<std::string, ConfigVarBase::ptr>;
+    using ConfigVarMap = std::unordered_map<std::string, ConfigVarBase::ptr>;
 
     /**
      * @berif 查找或创建指定成员
      * @details
-     * 在创建指定成员前，会先查找内部数据结构，存在的话，那么直接返回存在的节点，否则就创建当前节点
+     * 在创建指定成员前，会先查找内部数据结构，存在的话，
+     * 那么直接返回存在的节点，否则就创建当前节点
      * @param[in, out] name : const std::string &, 表示当前键名
-     * @param[in, out] default_value : const T&, 表示当前的键值，类型为模板类型
-     * @param[in, out] description : const std::string &, 表示当前键名的详细信息
+     * @param[in, out] default_value : const T&,
+     * 表示当前的键值，类型为模板类型
+     * @param[in, out] description : const std::string &,
+     * 表示当前键名的详细信息
      * @return 返回获得的目标节点信息
      */
     template <class T>
@@ -109,16 +414,32 @@ class Config {
     Lookup(const std::string &name, const T &default_value,
            const std::string &description = "")
     {
-        auto tmp = Lookup<T>(name);
-        if (tmp) { // 如果存在成员，那么提示已经存在了
-            SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
-                << "Lookup name=" << name << " exists";
-            return tmp;
+        // 对重复出现的键值进行额外处理
+        auto it = GetDatas().find(name);
+        if (it != GetDatas().end()) {
+            auto tmp =
+                std::dynamic_pointer_cast<ConfigVar<T>>( it->second);
+            // 向子类转换
+
+            if (tmp) {
+                SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
+                    << "Lookup name=" << name << " exists";
+                return tmp;
+            }
+            else { // 类型转换失败时
+                SYLAR_LOG_ERROR(SYLAR_LOG_ROOT())
+                    << "Lookup name=" << name << " exit but type "
+                    << typeid(T).name()
+                    << " real_type=" << it->second->getTypeName() << " "
+                    << it->second->toString();
+                return nullptr;
+            }
         }
 
         // 这里尝试使用正则来进行检测
         boost::regex error_pat("[^a-zA-Z0-9._]");
-        // if (name.find_first_not_of("abcdefghijklmnopqrstuvwxyz._0123454678")
+        // if
+        // (name.find_first_not_of("abcdefghijklmnopqrstuvwxyz._0123454678")
         // != std::string::npos)
         if (boost::regex_search(name, error_pat)) {
             SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "Lookup name invalid " << name;
@@ -131,8 +452,8 @@ class Config {
             // new ConfigVar<T>(name, default_value, description));
             std::make_shared<ConfigVar<T>>(name, default_value, description));
 
-        // 增加一个键值对
-        s_datas[name] = v;
+        // 增加一个键值对：name:ConfiVar
+        GetDatas()[name] = v;
 
         return v;
     }
@@ -140,13 +461,13 @@ class Config {
     template <class T>
     static typename ConfigVar<T>::ptr Lookup(const std::string &name)
     {
-        auto it = s_datas.find(name);
-        if (it == s_datas.end()) {
+        auto it = GetDatas().find(name);
+        if (it == GetDatas().end()) {
             return nullptr;
         }
 
-        // return std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
-        return std::static_pointer_cast<ConfigVar<T>>(it->second);
+        return std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
+        // return std::static_pointer_cast<ConfigVar<T>>(it->second);
         // 使用这个，效率好一点, 编译期进行类型转换
     }
 
@@ -154,7 +475,11 @@ class Config {
     static ConfigVarBase::ptr LookupBase(const std::string &name);
 
   private:
-    static ConfigVarMap s_datas;
+    static ConfigVarMap &GetDatas()
+    {
+        static ConfigVarMap s_datas;
+        return s_datas;
+    }
 };
 
 } // namespace sylar
