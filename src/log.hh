@@ -213,6 +213,7 @@ class LogFormatter {
  * @class 日志输出器
  */
 class LogAppender {
+friend class Logger;
   public:
     using ptr = std::shared_ptr<LogAppender>;
 
@@ -223,7 +224,7 @@ class LogAppender {
 
     virtual std::string toYamlString() = 0;
 
-    void setFormatter(LogFormatter::ptr val) { m_formatter = val; };
+    void setFormatter(LogFormatter::ptr val);
 
     LogFormatter::ptr getFormatter() const { return m_formatter; }
 
@@ -232,10 +233,9 @@ class LogAppender {
     void setLevel(LogLevel::Level val) { m_level = val; }
 
   protected:
-    LogLevel::Level m_level =
-        LogLevel::DEBUG; /**< 日志输出器的默认提示日志级别 */
-    // LogLevel::Level m_level;
-    LogFormatter::ptr m_formatter;
+    LogLevel::Level m_level = LogLevel::DEBUG;/**< 日志输出器的默认提示日志级别*/
+    bool m_hasFormatter = false;
+    LogFormatter::ptr m_formatter; /**< 日志输出器所属的解析器 */
 };
 
 /**
@@ -280,7 +280,7 @@ friend class LoggerManager;
     std::string m_name;                      /**< 日志名 */
     LogLevel::Level m_level;                 /**< Logger 的日志级别 */
     std::list<LogAppender::ptr> m_appenders; /**< 输出器集合 */
-    LogFormatter::ptr m_formatter;           /**< 格式解析器 */
+    LogFormatter::ptr m_formatter;           /**< 日志器所属的格式解析器 */
     Logger::ptr m_root;
 };
 

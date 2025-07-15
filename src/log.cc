@@ -90,6 +90,16 @@ void LogEvent::format(const char *fmt, va_list al)
 
 std::stringstream &LogEventWrap::getSS() { return m_event->getSS(); }
 
+void LogAppender::setFormatter(LogFormatter::ptr var)
+{
+    m_formatter = var;
+    if(m_formatter) {
+        m_hasFormatter = true;
+    } else {
+        m_hasFormatter = false;
+    }
+}
+
 Logger::Logger(const std::string &name) : m_name(name), m_level(LogLevel::DEBUG)
 {
     m_formatter.reset(new LogFormatter(
@@ -111,7 +121,14 @@ void Logger::initFormatter()
         "%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
 }
 
-void Logger::setFormatter(LogFormatter::ptr var) { m_formatter = var; }
+void Logger::setFormatter(LogFormatter::ptr var) { // 设置默认的 formatter
+    m_formatter = var;
+    for(auto &i : m_appenders) {
+        if(!i->m_hasFormatter) {
+            i->m_formatter = m_formatter;
+        }
+    }
+}
 
 void Logger::setFormatter(const std::string &var)
 {
@@ -123,7 +140,7 @@ void Logger::setFormatter(const std::string &var)
                   << " invalid formatter" << std::endl;
         return;
     }
-    m_formatter = new_var;
+    setFormatter(new_var);
 }
 
 std::string Logger::toYamlString()
@@ -155,10 +172,7 @@ LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
 void Logger::addAppender(LogAppender::ptr appender)
 {
     if (!appender->getFormatter()) {
-
-        // std::cout << "set appender fortmatter" << std::endl;
-        // std::cout << m_formatter->getPattern() << std::endl;
-        appender->setFormatter(m_formatter); // 将日志的默认解析器设置到输出器中
+        appender->m_formatter = m_formatter; // 将日志的默认解析器设置到输出器中
     }
 
     // std::cout << appender->getFormatter()->getPattern() << std::endl;
@@ -226,7 +240,7 @@ std::string FileLogAppender::toYamlString()
     if (m_level != LogLevel::UNKNOW) {
         node["level"] = LogLevel::ToString(m_level);
     }
-    if (m_formatter) {
+    if (m_hasFormatter && m_formatter) {
         node["formatter"] = m_formatter->getPattern();
     }
     std::stringstream ss;
@@ -294,7 +308,7 @@ std::string StdoutLogAppender::toYamlString()
     if (m_level != LogLevel::UNKNOW) {
         node["level"] = LogLevel::ToString(m_level);
     }
-    if (m_formatter) {
+    if (m_hasFormatter && m_formatter) {
         node["formatter"] = m_formatter->getPattern();
     }
     std::stringstream ss;
@@ -813,6 +827,16 @@ struct LogIniter {
                             ap.reset(new StdoutLogAppender);
                         }
                         ap->setLevel(a.level);
+                        if(!a.formatter.empty()) {
+                            LogFormatter::ptr fmt(new LogFormatter(a.formatter));
+                            if(!fmt->isError()) {
+                                ap->setFormatter(fmt);
+                            } else {
+                            std::cout << "log.name = " << i.name << " appendeer type"
+                                << a.type << " formatter=" << a.formatter
+                                << " is invaild" << std::endl;
+                            }
+                        }
                         logger->addAppender(ap);
                     }
                 }
@@ -822,7 +846,7 @@ struct LogIniter {
                     if (it == new_value.end()) {
                         // 删除logger
                         auto logger = SYLAR_LOG_NAME(i.name);
-                        logger->setLevel((LogLevel::Level)100);
+                        logger->setLevel((LogLevel::Level)0);
                         logger->clearAppenders();
                     }
                 }

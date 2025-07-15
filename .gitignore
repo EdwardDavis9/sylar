@@ -26,6 +26,9 @@
 # Ignore all local history of files
 .history
 
+root.txt
+system.txt
+
 # 一些目录
 /bin/app/*
 **/视频/**

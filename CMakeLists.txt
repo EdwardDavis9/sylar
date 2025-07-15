@@ -21,16 +21,20 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_BUILD_TYPE "Debug")
 # set(CMAKE_BUILD_TYPE "Release")
 
+include (cmake/utils.cmake)
+# +set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O0 -ggdb -std=c++11 -Wall -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 # 配置 C 和 C++ 编译选项
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -Wno-deprecated -Werror -Wno-unused-function")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O3 -g -Wno-deprecated -Werror -Wno-unused-function")
+  set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O3 -g -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 endif()
 
 
 set(LIB_SRC src/log.cc)
 add_library(sylar SHARED ${LIB_SRC})
+force_redefine_file_macro_for_sources(sylar) #__FILE__
+
 target_include_directories(sylar PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 file(GLOB_RECURSE PROJECT_SOURCES
@@ -65,6 +69,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 add_dependencies(${PROJECT_NAME} sylar)
+force_redefine_file_macro_for_sources(${PROJECT_NAME}) #__FILE__
 
 # 查找线程库
 # find_package(Threads REQUIRED)
