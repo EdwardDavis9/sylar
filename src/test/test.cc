@@ -129,8 +129,7 @@ void print_yaml(const YAML::Node &node, int level)
 
 void test_yaml()
 {
-    // YAML::Node root = YAML::LoadFile("../bin/conf/log.yaml");
-    YAML::Node root = YAML::LoadFile("~/Code/c++/bin/conf/log.yaml");
+    YAML::Node root = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
 
     // print_yaml(root, 0);
     // SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << root.Scalar();
@@ -185,8 +184,7 @@ void test_config()
 #endif
 
 #if 1
-    // YAML::Node root = YAML::LoadFile("../bin/conf/log.yaml");
-    YAML::Node root = YAML::LoadFile("../bin/conf/test.yaml");
+    YAML::Node root = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
     sylar::Config::LoadFromYaml(root);
 
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
@@ -299,7 +297,7 @@ void test_class()
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
 
-    YAML::Node node = YAML::LoadFile("../bin/conf/test.yaml");
+    YAML::Node node = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
     sylar::Config::LoadFromYaml(node);
 
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "after: " << g_person->getValue().toString()
@@ -315,7 +313,7 @@ void test_logs()
     static sylar::Logger::ptr system_log = SYLAR_LOG_NAME("system");
     SYLAR_LOG_INFO(system_log) << "hello system" << std::endl;
     std::cout << sylar::LoggerMgr::GetInstance()->toYamlString() << std::endl;
-    YAML::Node root = YAML::LoadFile("../bin/conf/log.yaml");
+    YAML::Node root = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
     sylar::Config::LoadFromYaml(root);
     std::cout << "============" << std::endl;
     std::cout << sylar::LoggerMgr::GetInstance()->toYamlString() << std::endl;

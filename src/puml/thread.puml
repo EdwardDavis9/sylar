@@ -1,0 +1,24 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+namespace sylar {
+
+class Thread {
+    -m_id: pid_t = -1
+    -m_thread: pthread_t = 0
+    -m_cb: function<void()>
+    -m_name: string
+
+    +ptr: shared_ptr<Thread>
+    +getId() const: pid_t
+    +getName() const: const string
+    +join(): void
+    +GetThis(): static Thread*
+    +GetName(): static const string&
+    +SetName(name: const string): static void
+    -run(arg: void*): static void*
+}
+
+}
+
+@enduml

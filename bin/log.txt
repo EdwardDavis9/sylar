@@ -1,4 +1,0 @@
-25-06-25  12:17:10	ERROR	test macro error
-25-06-25  12:17:10	DEBUG	test macro debug
-25-06-25  12:17:10	INFO	test macro info
-25-06-25  12:17:10	ERROR	test macro fmt error aa
