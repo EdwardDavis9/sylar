@@ -9,6 +9,29 @@ static thread_local std::string t_thread_name = "UNKNOWN";
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
+Semaphore::Semaphore(uint32_t count)
+{
+    if(sem_init(&m_semaphore, 0, count)) {
+        throw std::logic_error("sem_init error");
+    }
+}
+
+Semaphore::~Semaphore() {
+    sem_destroy(&m_semaphore);
+}
+
+auto Semaphore::wait() -> void {
+    if(sem_wait(&m_semaphore)) {
+        throw std::logic_error("sem_wait error");
+    }
+}
+
+auto Semaphore::notify() -> void {
+    if(sem_post(&m_semaphore)) {
+        throw std::logic_error("sem_post error");
+    }
+}
+
 Thread *Thread::GetThis() { return t_thread; }
 
 const std::string &Thread::GetName() { return t_thread_name; }
@@ -34,6 +57,7 @@ Thread::Thread(std::function<void()> cb, const std::string &name)
 			<< name;
         throw std::logic_error("pthread_create error");
     }
+    m_semaphore.wait();
 }
 
 Thread::~Thread()
@@ -71,6 +95,8 @@ void *Thread::run(void *arg)
     // 清空原有函数指针，并且进行自动清理资源
     std::function<void()> cb;
     cb.swap(thread->m_cb);
+
+    thread->m_semaphore.notify();
 
     cb();
     return 0;
