@@ -12,6 +12,7 @@
 #include "util.hh"
 #include <fstream>
 #include "singleton.hh"
+#include "thread.hh"
 
 // std::cout << logger->getLevel() << ", and " << level << std::endl;
 #define SYLAR_LOG_LEVEL(logger, level)                                  \
@@ -217,6 +218,8 @@ friend class Logger;
   public:
     using ptr = std::shared_ptr<LogAppender>;
 
+    using MutexType = Spinlock;
+
     virtual ~LogAppender() {}
 
     virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level,
@@ -226,7 +229,7 @@ friend class Logger;
 
     void setFormatter(LogFormatter::ptr val);
 
-    LogFormatter::ptr getFormatter() const { return m_formatter; }
+    LogFormatter::ptr getFormatter();
 
     LogLevel::Level getLevel() const { return m_level; }
 
@@ -235,6 +238,7 @@ friend class Logger;
   protected:
     LogLevel::Level m_level = LogLevel::DEBUG;/**< 日志输出器的默认提示日志级别*/
     bool m_hasFormatter = false;
+    MutexType m_mutex;  /**< 系统层面上自旋锁 */
     LogFormatter::ptr m_formatter; /**< 日志输出器所属的解析器 */
 };
 
@@ -245,6 +249,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
 friend class LoggerManager;
   public:
     using ptr = std::shared_ptr<Logger>;
+    using MutexType = Spinlock;
 
     Logger(const std::string &name = "root");
 
@@ -282,6 +287,7 @@ friend class LoggerManager;
     std::list<LogAppender::ptr> m_appenders; /**< 输出器集合 */
     LogFormatter::ptr m_formatter;           /**< 日志器所属的格式解析器 */
     Logger::ptr m_root;
+    MutexType m_mutex;                       /**< 系统层面上的自旋锁 */
 };
 
 /**
@@ -320,8 +326,8 @@ class FileLogAppender : public LogAppender {
 
   private:
     std::string m_filename;
-
     std::ofstream m_filestream;
+    uint64_t m_lastTime = 0;
 };
 
 inline sylar::LogEvent::ptr MakeLogEvent(sylar::Logger::ptr logger,
@@ -335,6 +341,8 @@ inline sylar::LogEvent::ptr MakeLogEvent(sylar::Logger::ptr logger,
 
 class LoggerManager {
   public:
+    using MutexType = Spinlock;
+
     LoggerManager();
 
     Logger::ptr getLogger(const std::string &name);
@@ -352,6 +360,7 @@ class LoggerManager {
   private:
     std::map<std::string, Logger::ptr> m_loggers;
     Logger::ptr m_root;
+    MutexType m_mutex;
 };
 
 using LoggerMgr = sylar::Singleton<LoggerManager>;

@@ -1,4 +1,4 @@
-project(test-thread)
+project(test_thread)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
@@ -18,11 +18,12 @@ target_link_libraries(
   sylar-src
 )
 
-target_include_directories (
-  ${PROJECT_NAME}
-  PRIVATE
-  ${CMAKE_SOURCE_DIR}/include
-)
+# target_include_directories (
+#   ${PROJECT_NAME}
+#   PRIVATE
+#   ${CMAKE_SOURCE_DIR}/include
+# )
+
 force_redefine_file_macro_for_sources(${PROJECT_NAME})
 
 add_test(NAME test COMMAND ${PROJECT_NAME})

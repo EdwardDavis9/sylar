@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include "config.hh"
+#include <time.h>
 
 namespace sylar {
 
@@ -92,6 +93,8 @@ std::stringstream &LogEventWrap::getSS() { return m_event->getSS(); }
 
 void LogAppender::setFormatter(LogFormatter::ptr var)
 {
+    MutexType::Lock lock(m_mutex);
+
     m_formatter = var;
     if(m_formatter) {
         m_hasFormatter = true;
@@ -122,8 +125,11 @@ void Logger::initFormatter()
 }
 
 void Logger::setFormatter(LogFormatter::ptr var) { // 设置默认的 formatter
+    MutexType::Lock lock(m_mutex);
     m_formatter = var;
     for(auto &i : m_appenders) {
+        MutexType::Lock ll(i->m_mutex);
+
         if(!i->m_hasFormatter) {
             i->m_formatter = m_formatter;
         }
@@ -145,6 +151,8 @@ void Logger::setFormatter(const std::string &var)
 
 std::string Logger::toYamlString()
 {
+    MutexType::Lock lock(m_mutex);
+
     YAML::Node node;
     node["name"] = m_name;
     if (m_level != LogLevel::UNKNOW) {
@@ -162,7 +170,10 @@ std::string Logger::toYamlString()
     return ss.str();
 }
 
-LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
+LogFormatter::ptr Logger::getFormatter() {
+    MutexType::Lock lock(m_mutex);
+    return m_formatter;
+}
 
 /**
  * @brief 添加输出器
@@ -171,7 +182,10 @@ LogFormatter::ptr Logger::getFormatter() { return m_formatter; }
  */
 void Logger::addAppender(LogAppender::ptr appender)
 {
+    MutexType::Lock lock(m_mutex);
+
     if (!appender->getFormatter()) {
+        MutexType::Lock ll(appender->m_mutex);
         appender->m_formatter = m_formatter; // 将日志的默认解析器设置到输出器中
     }
 
@@ -187,6 +201,7 @@ void Logger::addAppender(LogAppender::ptr appender)
  */
 void Logger::delAppender(LogAppender::ptr appender)
 {
+    MutexType::Lock lock(m_mutex);
     for (auto it = m_appenders.begin(); it != m_appenders.end(); ++it) {
         if (*it == appender) {
             m_appenders.erase(it);
@@ -195,7 +210,10 @@ void Logger::delAppender(LogAppender::ptr appender)
     }
 }
 
-void Logger::clearAppenders() { m_appenders.clear(); }
+void Logger::clearAppenders() {
+    MutexType::Lock lock(m_mutex);
+    m_appenders.clear();
+}
 
 /**
  * @brief 日志输出
@@ -210,6 +228,7 @@ void Logger::log(LogLevel::Level level, LogEvent::ptr event)
 
         auto self = shared_from_this();
 
+        MutexType::Lock lock(m_mutex);
         // 如果设置了专有输出器
         if (!m_appenders.empty()) {
             for (auto &i : m_appenders) {
@@ -234,6 +253,7 @@ void Logger::fatal(LogEvent::ptr event) { log(LogLevel::FATAL, event); }
 
 std::string FileLogAppender::toYamlString()
 {
+    MutexType::Lock lock(m_mutex);
     YAML::Node node;
     node["type"] = "FileLogAppender";
     node["file"] = m_filename;
@@ -256,6 +276,7 @@ std::string FileLogAppender::toYamlString()
  */
 bool FileLogAppender::reopen()
 {
+    MutexType::Lock lock(m_mutex);
     if (m_filestream) {
         m_filestream.close();
     }
@@ -274,35 +295,38 @@ void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level,
                           LogEvent::ptr event)
 {
     if (level >= m_level) { // 事件的日志级别 是否大于 输出器的 默认惊醒级别
-        m_filestream << m_formatter->format(logger, level, event);
+        uint64_t now = time(0);
+
+        // 为避免在输出内容时，文件被删除，这里每次在输出前都 ropen
+        if(now != m_lastTime){
+            reopen();
+            m_lastTime = now;
+        }
+
+        MutexType::Lock lock(m_mutex);
+        if(!(m_filestream << m_formatter->format(logger, level, event))) {
+            std::cout << "error " << std::endl;
+        }
     }
 }
 
 void StdoutLogAppender::log(std::shared_ptr<Logger> logger,
-                            LogLevel::Level level, LogEvent::ptr event)
+                            LogLevel::Level level,
+                            LogEvent::ptr event)
 {
 
-    // std::cerr << "[log] StdoutLogAppender is loggine before..." << " and
-    // level is " << level << std::endl;
-
-    // std::cerr << "[debug] logger level = " << LogLevel::ToString(m_level)
-    // << ", event level = " << LogLevel::ToString(level) << std::endl;
-
+    // 只有大于日志默认级别，才会尝试将其输出
+    // 但是否输出，还依赖于输出器的输出级别
     if (level >= m_level) { // 事件的日志级别 是否大于 当前日志的默认级别
-
-        // 只有大于日志的
-        // 默认级别，才会尝试将其输出，但是否输出，还依赖于输出器的输出级别
-
-        // std::cerr << "[log] StdoutLogAppender is logging...\n";
-
+        MutexType::Lock lock(m_mutex);
         std::cout << m_formatter->format(logger, level, event);
     }
 
-    // std::cerr << "[log] StdoutLogAppender is logging end...\n";
 }
 
 std::string StdoutLogAppender::toYamlString()
 {
+    MutexType::Lock lock(m_mutex);
     YAML::Node node;
     node["type"] = "StdoutLogAppender";
     if (m_level != LogLevel::UNKNOW) {
@@ -335,6 +359,12 @@ std::string LogFormatter::format(std::shared_ptr<Logger> logger,
     }
 
     return s_stream.str();
+}
+
+LogFormatter::ptr LogAppender::getFormatter() {
+    MutexType::Lock lock(m_mutex);
+
+    return m_formatter;
 }
 
 /**
@@ -623,15 +653,20 @@ void LogFormatter::init()
 LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
                    const char *file, int32_t line, uint32_t elapse,
                    uint32_t thread_id, uint32_t fiber_id, uint64_t time)
-    : m_file(file), m_line(line), m_elapse(elapse), m_threadId(thread_id),
-      m_fiberId(fiber_id), m_time(time), m_logger(logger), m_level(level)
-{
-
-    // std::cout << "有 logger 构造" << std::endl;
-}
+    : m_file(file),
+      m_line(line),
+      m_elapse(elapse),
+      m_threadId(thread_id),
+      m_fiberId(fiber_id),
+      m_time(time),
+      m_logger(logger),
+      m_level(level)
+{ }
 
 Logger::ptr LoggerManager::getLogger(const std::string &name)
 {
+    MutexType::Lock lock(m_mutex);
+
     auto it = m_loggers.find(name);
 
     if (it != m_loggers.end()) {
@@ -858,6 +893,8 @@ static LogIniter _log_init;
 
 std::string LoggerManager::toYamlString()
 {
+    MutexType::Lock lock(m_mutex);
+
     YAML::Node node;
     for (auto &i : m_loggers) {
         node.push_back(YAML::Load(i.second->toYamlString()));

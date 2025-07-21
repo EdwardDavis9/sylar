@@ -1,5 +1,31 @@
-# 项目介绍
+# 项目简介
 
-当前页面内容，后续在进行补充。
+## 日志管理
 
-现在只为了主页显示，并不会显示实际内容。
+``` text
+Log4J
+
+Logger (日志器)
+|
+|-------Formatter（日志格式）
+|
+Appender（日志输出器）
+```
+
+
+## 配置系统
+
+``` text
+Config: Yaml-config
+```
+
+yaml-cpp
+
+``` shell
+# use package-manager-tool
+# package-manager --install yaml-cpp
+
+# git
+# git-clone yaml-cpp
+mkdir build && cd build && cmake .. && make install
+```

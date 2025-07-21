@@ -1,7 +1,6 @@
 cmake_policy(SET CMP0167 NEW)
 
 project(sylar-src)
-include (../cmake/utils.cmake)
 
 file(
   GLOB_RECURSE PROJECT_SOURCES
@@ -25,13 +24,21 @@ add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
 
 target_include_directories(
   ${PROJECT_NAME}
-  PRIVATE
+  PUBLIC
   ${CMAKE_SOURCE_DIR}/include
 )
 force_redefine_file_macro_for_sources(${PROJECT_NAME})
 
 find_package(yaml-cpp REQUIRED)
 find_package(Boost REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp Boost::boost)
+find_package(Threads REQUIRED)
+
+set(LIBS
+  yaml-cpp
+  Boost::boost
+  Threads::Threads
+  )
+
+target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBS})
 
 add_subdirectory(test)
