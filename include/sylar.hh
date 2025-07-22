@@ -7,4 +7,6 @@
 #include "thread.hh"
 #include "util.hh"
 
+#include "macro.hh"
+
 #endif // __SYLAR_SYLAR_H__

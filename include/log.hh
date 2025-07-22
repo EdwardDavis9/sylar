@@ -14,6 +14,8 @@
 #include "singleton.hh"
 #include "thread.hh"
 
+#include "fiber.hh"
+
 // std::cout << logger->getLevel() << ", and " << level << std::endl;
 #define SYLAR_LOG_LEVEL(logger, level)                                  \
     if (logger->getLevel() <= level)                                    \
