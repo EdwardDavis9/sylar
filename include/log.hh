@@ -22,7 +22,7 @@
     sylar::LogEventWrap(                                                \
         sylar::LogEvent::ptr(new sylar::LogEvent(                       \
             logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
-            sylar::GetFiberId(), time(0))))                             \
+            sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
         .getSS()
 
 #define SYLAR_LOG_DEBUG(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::DEBUG)
@@ -41,7 +41,7 @@
     sylar::LogEventWrap(                                                \
         sylar::LogEvent::ptr(new sylar::LogEvent(                       \
             logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
-            sylar::GetFiberId(), time(0))))                             \
+            sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
         .getEvent()                                                     \
         ->format(fmt, __VA_ARGS__)
 
@@ -92,9 +92,15 @@ class LogEvent {
     // LogEvent(const char *file, int32_t line, uint32_t elapse,
     //          uint32_t thread_id, uint32_t fiber_id, uint64_t time);
 
-    LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
-             const char *file, int32_t line, uint32_t elapse,
-             uint32_t thread_id, uint32_t fiber_id, uint64_t time);
+    LogEvent(std::shared_ptr<Logger> logger,
+             LogLevel::Level level,
+             const char *file,
+             int32_t line,
+             uint32_t elapse,
+             uint32_t thread_id,
+             uint32_t fiber_id,
+             uint64_t time,
+             const std::string& thread_name);
 
     // 获得日志事件的属性
 
@@ -112,6 +118,8 @@ class LogEvent {
     uint32_t getThreadId() const { return m_threadId; }
 
     uint32_t getTime() const { return m_time; }
+
+    const std::string& getThreadNam() { return m_threadName; }
 
     std::string getContent() const { return m_ss.str(); }
 
@@ -146,6 +154,7 @@ class LogEvent {
     uint32_t m_fiberId  = 0;       /**< 协程id */
     uint64_t m_time;               /**< 时间戳 */
     std::stringstream m_ss;
+    std::string m_threadName;
 
     std::shared_ptr<Logger> m_logger; /**< Log */
     LogLevel::Level m_level;          /**< Log的等级 */
@@ -332,14 +341,6 @@ class FileLogAppender : public LogAppender {
     uint64_t m_lastTime = 0;
 };
 
-inline sylar::LogEvent::ptr MakeLogEvent(sylar::Logger::ptr logger,
-                                         sylar::LogLevel::Level level,
-                                         const char *file, int line,
-                                         uint64_t thread_id, uint64_t fiber_id)
-{
-    return std::make_shared<sylar::LogEvent>(logger, level, file, line, 0,
-                                             thread_id, fiber_id, time(0));
-};
 
 class LoggerManager {
   public:

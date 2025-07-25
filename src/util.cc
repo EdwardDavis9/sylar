@@ -2,6 +2,7 @@
 
 #include "util.hh"
 #include "log.hh"
+#include "fiber.hh"
 
 namespace sylar {
 
@@ -38,6 +39,8 @@ std::string BacktraceToString(int size, int skip, const std::string& prefix) {
 	return ss.str();
 }
 
-uint32_t GetFiberId() { return 0; }
+uint64_t GetFiberId() {
+	return sylar::Fiber::GetFiberId();
+}
 
 } // namespace sylar

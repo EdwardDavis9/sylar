@@ -8,17 +8,38 @@
 
 namespace sylar {
 
+class Scheduler;
+
 class Fiber : public std::enable_shared_from_this<Fiber> {
+friend class Scheduler;
   public:
 
 	using ptr = std::shared_ptr<Fiber>;
 
-    enum State { INIT, HOLD, EXEC, TERM, READY };
+    enum State {
+		INIT,   // 初始态
+		HOLD,   // 挂起态
+		EXEC,   // 执行态
+		TERM,   // 终止态
+		READY,  // 准备态
+		EXCEPT, // 异常态
+	};
 
-    Fiber(std::function<void()> cb, size_t stacksize = 0);
+    Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
 	~Fiber();
 
+	// 初始化协程相关内容
 	void reset(std::function<void()> cb);
+
+	void call();
+
+	void back();
+
+	uint64_t getId() { return m_id;}
+
+	State getState() { return m_state; }
+
+	static uint64_t GetFiberId();
 
     //重置协程函数，并重置状态
     //INIT，TERM
@@ -40,7 +61,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 	static void SetThis(Fiber * f);
 
 	/**
-	 * @brief 返回当前协程
+	 * @brief 返回一个协程对象
 	 */
 	static Fiber::ptr GetThis();
 
@@ -59,7 +80,12 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 	 */
 	static uint64_t TotalFibers();
 
+    /**
+	 * @berif 协程调度
+	 */
 	static void MainFunc();
+
+	static void CallerMainFunc();
 
   private:
     Fiber();
@@ -71,7 +97,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 	ucontext_t m_ctx;
 	void * m_stack = nullptr;
 
-	std::function<void()> m_cb;
+	std::function<void()> m_cb; // 协程的回调函数
 };
 
 } // namespace sylar

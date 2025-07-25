@@ -1,4 +1,4 @@
-project(test_util)
+project(test_scheduler)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
@@ -6,7 +6,9 @@ set(
   MAIN
   # ./test.cc
   # ./test_thread.cc
-  ./test_util.cc
+  # ./test_util.cc
+  # ./test_fiber.cc
+  ./test_scheduler.cc
 )
 
 add_executable(${PROJECT_NAME} ${MAIN})

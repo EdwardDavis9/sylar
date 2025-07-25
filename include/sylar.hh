@@ -9,4 +9,7 @@
 
 #include "macro.hh"
 
+#include "fiber.hh"
+#include "scheduler.hh"
+
 #endif // __SYLAR_SYLAR_H__
