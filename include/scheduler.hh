@@ -19,7 +19,7 @@ class Scheduler {
 			  const std::string& name= "");
 
 
-	const std::string& getname() const { return m_name; }
+	const std::string& getName() const { return m_name; }
 
 	void start();
 	void stop();
@@ -65,6 +65,8 @@ class Scheduler {
     bool   m_autoStop    = false;
     int    m_rootThread  = 0;
     size_t m_threadCount = 0;
+
+	bool hasIdleThreads() { return m_idleThreadCount > 0; }
 
     void run();
 
