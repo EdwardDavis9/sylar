@@ -7,6 +7,8 @@ file(
   ./*.cc
 )
 
+# message(STATUS "Project sources: ${PROJECT_SOURCES}")
+
 file(
   GLOB_RECURSE CCLS_CACHE_FILES
   ./.ccls-cache/*.cc
