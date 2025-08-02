@@ -39,6 +39,7 @@ set(LIBS
   yaml-cpp
   Boost::boost
   Threads::Threads
+  dl
   )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBS})
