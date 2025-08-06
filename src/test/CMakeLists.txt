@@ -1,4 +1,4 @@
-project(test_hook)
+project(test_bytearray)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
@@ -10,7 +10,10 @@ set(
   # ./test_fiber.cc
   # ./test_scheduler.cc
   # ./test_iomanager.cc
-  ./test_hook.cc
+  # ./test_hook.cc
+  # ./test_address.cc
+  # ./test_socket.cc
+  ./test_bytearray.cc
 )
 
 add_executable(${PROJECT_NAME} ${MAIN})

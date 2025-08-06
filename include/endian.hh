@@ -25,7 +25,8 @@ byteswap(T value)
 }
 
 template <class T>
-typename std::enable_if<sizeof(T) == sizeof(uint16_t)>::type byteswap(T value)
+typename std::enable_if<sizeof(T) == sizeof(uint16_t), T>::type
+byteswap(T value)
 {
     return (T)bswap_16((uint16_t)value);
 }
@@ -40,27 +41,26 @@ typename std::enable_if<sizeof(T) == sizeof(uint16_t)>::type byteswap(T value)
 template <class T>
 T byteswapOnLittleEndian(T t)
 {
-    return byteswap(t);
+    return t;
 }
 
 template <class T>
 T byteswapBigEndian(T t)
 {
-    return t;
-}
-
-#else
-template<class T>
-T byteswapOnBigEndian(T t) {
     return byteswap(t);
 }
 
+ #else
 template <class T>
 T byteswapOnLittleEndian(T t)
 {
-	return t;
+    return byteswap(t);
 }
 
+template<class T>
+T byteswapOnBigEndian(T t) {
+	return t;
+}
 #endif
 
 }; // namespace sylar

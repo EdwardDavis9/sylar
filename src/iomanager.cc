@@ -271,7 +271,7 @@ bool IOManager::cancelAll(int fd)
     }
 
     if (fd_ctx->events & WRITE) {
-        fd_ctx->triggerEvent(READ);
+        fd_ctx->triggerEvent(WRITE);
         --m_pendingEventCount;
     }
 

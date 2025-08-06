@@ -21,7 +21,7 @@ class IOManager : public Scheduler, public TimerManager {
         using MutexType = Mutex;
 
         struct EventContext {
-            Scheduler *scheduler;     /**< 事件执行的scheduler */
+            Scheduler *scheduler = nullptr;     /**< 事件执行的scheduler */
             Fiber::ptr fiber;         /**< 事件协程 */
             std::function<void()> cb; /**< 事件的回调函数 */
         };
@@ -45,8 +45,6 @@ class IOManager : public Scheduler, public TimerManager {
 
 	// 0 success, -1 error
     int addEvent(int fd, Event event, std::function<void()> cb = nullptr);
-
-	bool delEvent(int fd, Event event, std::function<void()> cb = nullptr);
 	bool delEvent(int fd, Event event);
 	bool cancelEvent(int fd, Event event);
 	bool cancelAll(int fd);
