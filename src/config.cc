@@ -1,4 +1,4 @@
-#include "config.hh"
+#include "sylar/config.hh"
 #include <sstream>
 #include <boost/regex.hpp>
 

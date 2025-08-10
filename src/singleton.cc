@@ -1,5 +1,5 @@
-#include "singleton.hh"
-#include "log.hh"
+#include "sylar/singleton.hh"
+#include "sylar/log.hh"
 
 namespace sylar {
 

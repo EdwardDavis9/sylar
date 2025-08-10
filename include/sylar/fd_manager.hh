@@ -1,8 +1,8 @@
 #ifndef __SYLAR_FD_MANAGER_H__
 #define __SYLAR_FD_MANAGER_H__
 
-#include "singleton.hh"
-#include "thread.hh"
+#include "sylar/singleton.hh"
+#include "sylar/thread.hh"
 #include <vector>
 #include <memory>
 

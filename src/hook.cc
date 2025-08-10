@@ -1,11 +1,11 @@
-#include "hook.hh"
+#include "sylar/hook.hh"
 #include <dlfcn.h>
 
-#include "config.hh"
-#include "fiber.hh"
-#include "iomanager.hh"
-#include "fd_manager.hh"
-#include "log.hh"
+#include "sylar/config.hh"
+#include "sylar/fiber.hh"
+#include "sylar/iomanager.hh"
+#include "sylar/fd_manager.hh"
+#include "sylar/log.hh"
 #include <stdarg.h>
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
@@ -190,14 +190,23 @@ HOOK_FUN(XX);
 unsigned int sleep(unsigned int seconds)
 {
     if (!sylar::t_hook_enable) {
+        // SYLAR_LOG_INFO(g_logger) << "sleep_f---------------------------";
         return sleep_f(seconds);
     }
 
     sylar::Fiber::ptr fiber = sylar::Fiber::GetThis();
+    // SYLAR_LOG_INFO(g_logger) << "fiber " << fiber;
     sylar::IOManager *iom   = sylar::IOManager::GetThis();
+    // SYLAR_LOG_INFO(g_logger) << "iom " << iom << ", "  << &iom;
     iom->addTimer(seconds * 1000, [iom, fiber]() { iom->schedule(fiber, -1); });
 
+    // iom->addTimer(seconds * 1000, std::bind((void(sylar::Scheduler::*)
+    //         (sylar::Fiber::ptr, int thread))&sylar::IOManager::schedule
+    //         ,iom, fiber, -1));
+    // SYLAR_LOG_INFO(g_logger) << "iom addtimer";
+
     sylar::Fiber::YieldToHold();
+    // SYLAR_LOG_INFO(g_logger) << "fiber yield";
 
     return 0;
 }

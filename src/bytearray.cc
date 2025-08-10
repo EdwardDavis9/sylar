@@ -1,8 +1,8 @@
-#include "bytearray.hh"
+#include "sylar/bytearray.hh"
 #include <string.h>
 
-#include "log.hh"
-#include "endian.hh"
+#include "sylar/log.hh"
+#include "sylar/endian.hh"
 #include <stdexcept>
 #include <fstream>
 #include <sstream>

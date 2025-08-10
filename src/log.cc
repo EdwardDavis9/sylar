@@ -1,4 +1,4 @@
-#include "log.hh"
+#include "sylar/log.hh"
 #include <stdarg.h>
 #include <memory>
 #include <tuple>
@@ -7,7 +7,7 @@
 #include <functional>
 #include <string>
 #include <iostream>
-#include "config.hh"
+#include "sylar/config.hh"
 #include <time.h>
 
 namespace sylar {

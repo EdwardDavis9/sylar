@@ -1,8 +1,8 @@
 #ifndef __SYLAR_IMANAGER_H__
 #define __SYLAR_IMANAGER_H__
 
-#include "scheduler.hh"
-#include "timer.hh"
+#include "sylar/scheduler.hh"
+#include "sylar/timer.hh"
 
 namespace sylar {
 class IOManager : public Scheduler, public TimerManager {

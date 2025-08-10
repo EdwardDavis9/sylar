@@ -1,7 +1,7 @@
 #ifndef __SYLAR_FIBER_H__
 #define __SYLAR_FIBER_H__
 
-#include "thread.hh"
+#include "sylar/thread.hh"
 #include <functional>
 #include <memory>
 #include <ucontext.h>

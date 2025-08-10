@@ -1,6 +1,6 @@
-#include "iomanager.hh"
-#include "log.hh"
-#include "macro.hh"
+#include "sylar/iomanager.hh"
+#include "sylar/log.hh"
+#include "sylar/macro.hh"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -281,7 +281,13 @@ bool IOManager::cancelAll(int fd)
 
 IOManager *IOManager::GetThis()
 {
-    return dynamic_cast<IOManager *>(Scheduler::GetThis());
+    // return dynamic_cast<IOManager *>(Scheduler::GetThis());
+     Scheduler* sched = Scheduler::GetThis();
+    // IOManager* iom = dynamic_cast<IOManager*>(sched);
+    // if (!iom) {
+    //     SYLAR_LOG_ERROR(g_logger) << "Current Scheduler is not IOManager!";
+    // }
+    return iom;
 }
 
 void IOManager::tickle()

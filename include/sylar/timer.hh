@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 #include <set>
-#include "thread.hh"
+#include "sylar/thread.hh"
 
 namespace sylar {
 class TimerManager;

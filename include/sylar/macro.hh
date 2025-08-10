@@ -1,7 +1,7 @@
 #ifndef __SYLAR_MACRO_H__
 #define __SYLAR_MACRO_H__
 
-#include "util.hh"
+#include "sylar/util.hh"
 #include <assert.h>
 #include <string>
 

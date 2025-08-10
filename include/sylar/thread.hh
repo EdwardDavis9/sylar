@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <atomic>
 
-#include "noncopyable.hh"
+#include "sylar/noncopyable.hh"
 
 
 namespace sylar {

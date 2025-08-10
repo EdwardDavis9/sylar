@@ -5,12 +5,12 @@
 #include <memory>
 #include <vector>
 #include <list>
-#include "fiber.hh"
-#include "thread.hh"
+#include "sylar/fiber.hh"
+#include "sylar/thread.hh"
 
 namespace sylar {
 
-class Scheduler {
+class Scheduler : public std::enable_shared_from_this<Scheduler> {
   public:
     using ptr       = std::shared_ptr<Scheduler>;
     using MutexType = Mutex;
