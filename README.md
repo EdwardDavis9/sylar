@@ -139,3 +139,10 @@ while (true) {
     5. 每轮结束后 reset 清理 ft；
 }
 ```
+
+## TCP server 封装
+
+基于 TCP server 实现一个 EchoServer
+
+## Stream 针对 File/Socket 封装
+
