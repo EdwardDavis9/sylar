@@ -570,7 +570,7 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
             sylar::FdCtx::ptr ctx = sylar::FdMgr::GetInstance()->get(sockfd);
             if (ctx) {
                 const timeval *v = static_cast<const timeval *>(optval);
-                ctx->setTimeout(optname, v->tv_usec * 1000 + v->tv_usec / 1000);
+                ctx->setTimeout(optname, v->tv_sec * 1000 + v->tv_usec / 1000);
             }
         }
     }

@@ -234,7 +234,7 @@ void Logger::log(LogLevel::Level level, LogEvent::ptr event)
 
 void Logger::debug(LogEvent::ptr event) { log(LogLevel::DEBUG, event); }
 
-void Logger::info(LogEvent::ptr event) { log(LogLevel::DEBUG, event); }
+void Logger::info(LogEvent::ptr event) { log(LogLevel::INFO, event); }
 
 void Logger::warn(LogEvent::ptr event) { log(LogLevel::WARN, event); }
 

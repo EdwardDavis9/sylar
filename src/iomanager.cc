@@ -96,8 +96,11 @@ IOManager::~IOManager()
     close(m_tickleFds[1]);
 
     for (auto &i : m_fdContexts) {
-        delete i;
+        if(i) {
+            delete i;
+        }
     }
+
 }
 
 int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
@@ -217,7 +220,7 @@ bool IOManager::cancelEvent(int fd, Event event)
     }
 
     Event new_events = static_cast<Event>(fd_ctx->events & ~event);
-    int op           = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+    int op           = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
     epoll_event epevent;
     epevent.events   = EPOLLET | new_events;
     epevent.data.ptr = fd_ctx;
@@ -283,7 +286,7 @@ IOManager *IOManager::GetThis()
 {
     // return dynamic_cast<IOManager *>(Scheduler::GetThis());
      Scheduler* sched = Scheduler::GetThis();
-    // IOManager* iom = dynamic_cast<IOManager*>(sched);
+    IOManager* iom = dynamic_cast<IOManager*>(sched);
     // if (!iom) {
     //     SYLAR_LOG_ERROR(g_logger) << "Current Scheduler is not IOManager!";
     // }
@@ -316,7 +319,7 @@ bool IOManager::stopping()
 
 void IOManager::idle()
 {
-    epoll_event *events = new epoll_event[64];
+    epoll_event *events = new epoll_event[64]();
     std::shared_ptr<epoll_event> shared_events(
         events, [](epoll_event *ptr) { delete[] ptr; });
 
@@ -324,7 +327,7 @@ void IOManager::idle()
         uint64_t next_timeout = 0;
         if(stopping(next_timeout)) {
             SYLAR_LOG_INFO(g_logger)
-                << "name=" << getName() << " idlee stopping exit";
+                << "name=" << getName() << " idle stopping exit";
             break;
         }
 
@@ -334,7 +337,7 @@ void IOManager::idle()
             // 最大超时时间
             static  const int MAX_TIMEOUT = 3000;
             if(next_timeout != ~0ull) {
-                next_timeout = static_cast<int>(next_timeout > MAX_TIMEOUT)
+                next_timeout = static_cast<int>(next_timeout) > MAX_TIMEOUT
                     ? MAX_TIMEOUT : next_timeout;
             } else {
                 next_timeout = MAX_TIMEOUT;
