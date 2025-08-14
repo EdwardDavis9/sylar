@@ -60,7 +60,7 @@ Socket::ptr Socket::CreateUnixUDPSocket()
 }
 
 Socket::Socket(int family, int type, int protocol)
-    : m_sock(-1), m_family(family), m_type(type), m_protocol(protocol)
+    : m_sock(-1), m_family(family), m_type(type), m_protocol(protocol), m_isConnected(false)
 {}
 
 Socket::~Socket() { close(); }
@@ -395,7 +395,7 @@ bool Socket::isVaild() const { return m_sock != -1; }
 
 std::ostream &Socket::dump(std::ostream &os) const {
 
-	os << "[Socket sock=" << m_sock << "is_connected=" << m_isConnected
+	os << "[Socket sock=" << m_sock << " is_connected=" << m_isConnected
 		<< " family=" << m_family << " type=" << m_type
 		<< " portocol=" << m_protocol;
 	if(m_localAddress) {
@@ -452,6 +452,12 @@ bool Socket::init(int sock) {
 		return true;
 	}
 	return false;
+}
+
+
+std::ostream& operator<<(std::ostream& os, const Socket& addr)
+{
+	return addr.dump(os);
 }
 
 }; // namespace sylar

@@ -159,6 +159,9 @@ class UnknowAddress : public Address {
 	private:
 	sockaddr m_addr;
 };
+
+std::ostream& operator<<(std::ostream& os, const Address& addr);
+
 }; // namespace sylar
 
 #endif // __SYLAR_ADDRESS_H__

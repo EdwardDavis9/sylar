@@ -17,6 +17,7 @@ file(
 file(
   GLOB_RECURSE SYLAR_TEST_FILES
   ./test/*.cc
+  ./example/*.cc
 )
 
 list(REMOVE_ITEM PROJECT_SOURCES ${CCLS_CACHE_FILES})
@@ -45,3 +46,4 @@ set(LIBS
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBS})
 
 add_subdirectory(test)
+add_subdirectory(example)

@@ -1,9 +1,9 @@
-project(test_bytearray)
+project(test_tcp_server)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
 set(
-  MAIN
+  MAIN_TEST
   # ./test.cc
   # ./test_thread.cc
   # ./test_util.cc
@@ -13,10 +13,13 @@ set(
   # ./test_hook.cc
   # ./test_address.cc
   # ./test_socket.cc
-  ./test_bytearray.cc
+  # ./test_bytearray.cc
+  # ./test_http.cc
+  # ./test_http_parser.cc
+  ./test_tcp_server.cc
 )
 
-add_executable(${PROJECT_NAME} ${MAIN})
+add_executable(${PROJECT_NAME} ${MAIN_TEST})
 
 add_dependencies(${PROJECT_NAME} sylar-src)
 

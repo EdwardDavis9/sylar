@@ -108,11 +108,13 @@ class Socket : public std::enable_shared_from_this<Socket>, Noncopyable {
 	int m_family;
 	int m_type;
 	int m_protocol;
-	int m_isConnected;
+	bool m_isConnected = false;
 
 	Address::ptr m_localAddress;
 	Address::ptr m_remoteAddress;
 };
+
+std::ostream& operator<<(std::ostream& os, const Socket& addr);
 
 }; // namespace sylar
 
