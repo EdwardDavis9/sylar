@@ -275,7 +275,7 @@ IPAddress::ptr IPAddress::Create(const char *address, uint16_t port)
     addrinfo hints, *results;
     memset(&hints, 0, sizeof(addrinfo));
 
-    hints.ai_flags  = 0;
+    hints.ai_flags  = AI_NUMERICHOST;
     hints.ai_family = AF_UNSPEC;
 
     int error = getaddrinfo(address, nullptr, &hints, &results);
@@ -421,7 +421,7 @@ IPv6Address::IPv6Address(const uint8_t address[16], uint16_t port)
     memset(&m_addr, 0, sizeof(m_addr));
     m_addr.sin6_family = AF_INET6;
     m_addr.sin6_port   = byteswapOnLittleEndian(port);
-    memcpy(&m_addr.sin6_addr, address, 16);
+    memcpy(&m_addr.sin6_addr.s6_addr, address, 16);
 }
 
 const sockaddr *IPv6Address::getAddr() const { return (sockaddr *)&m_addr; }
@@ -459,6 +459,10 @@ std::ostream &IPv6Address::insert(std::ostream &os) const
 
         // 变成主机字节序, 以16进制的形式进行输出
         os << std::hex << (int)byteswapOnLittleEndian(addr[i]) << std::dec;
+    }
+
+    if(!used_zeros && addr[7] == 0) {
+        os << "::";
     }
 
     // 如果还没有进行压缩::,  那么在结尾进行追加
@@ -589,6 +593,10 @@ std::ostream &UnknowAddress::insert(std::ostream &os) const
 {
     os << "[UnknowAddress family = " << m_addr.sa_family << "]";
     return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Address& addr) {
+    return addr.insert(os);
 }
 
 }; // namespace sylar
