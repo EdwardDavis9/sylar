@@ -221,6 +221,16 @@ namespace http {
 		return m_data->getHeaderAs<uint64_t>("content-length", 0);
 	}
 
+	uint64_t HttpRequestParser::GetHttpRequestBufferSize()
+	{
+		return s_http_request_buffer_size;
+	}
+
+	uint64_t HttpRequestParser::GetHttpRequestMaxBodySize()
+	{
+		return s_http_request_max_body_size;
+	}
+
 
 };// namespace http
 }; // namespace sylar

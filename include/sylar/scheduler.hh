@@ -15,6 +15,11 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     using ptr       = std::shared_ptr<Scheduler>;
     using MutexType = Mutex;
 
+	/**
+	 * threads：线程池大小
+	 * use_caller：是否把当前线程作为调度线程
+	 * name：调度器名字，方便日志和调试
+	 */
     Scheduler(size_t threads = 1,
 			  bool use_caller = true,
 			  const std::string& name= "");
@@ -73,7 +78,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     void run();
 
 	/**
-	 * @brief 设置线程对应的调度器对象
+	 * @brief 设置当前线程对应的调度器对象
 	 */
     void setThis();
 

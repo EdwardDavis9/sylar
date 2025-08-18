@@ -71,7 +71,7 @@ IOManager::IOManager(size_t threads,
     rt = epoll_ctl(m_epfd, EPOLL_CTL_ADD, m_tickleFds[0], &event);
     SYLAR_ASSERT(!rt);
 
-    contextResize(32);
+    contextResize(32); // 设置上下文的大小
 
     start();
 }

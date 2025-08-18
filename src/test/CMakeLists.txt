@@ -1,4 +1,4 @@
-project(test_tcp_server)
+project(test_http_servlet)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
@@ -16,7 +16,9 @@ set(
   # ./test_bytearray.cc
   # ./test_http.cc
   # ./test_http_parser.cc
-  ./test_tcp_server.cc
+  # ./test_TCP_server.cc
+  # ./test_http_server.cc
+  ./test_http_servlet.cc
 )
 
 add_executable(${PROJECT_NAME} ${MAIN_TEST})

@@ -31,8 +31,10 @@ friend class Scheduler;
 	// 初始化协程相关内容
 	void reset(std::function<void()> cb);
 
+    // 从当前的主协程调用子协程
 	void call();
 
+	// 从子协程切回当前的主协程
 	void back();
 
 	uint64_t getId() { return m_id;}
@@ -45,33 +47,33 @@ friend class Scheduler;
     //INIT，TERM
 
 	/**
-	 * @brief 切换到当前协程执行
+	 * @brief 从记录中的主协程切换到子协程执行
 	 */
 	void swapIn();
 
 
 	/**
-	 * @brief 切换到后台执行
+	 * @brief 从子协程切换到记录中的主协程执行
 	 */
 	void swapOut();
 
 	/**
-	 * @brief 设置当前协程
+	 * @brief 设置当前运行的协程
 	 */
 	static void SetThis(Fiber * f);
 
 	/**
-	 * @brief 返回一个协程对象
+	 * @brief 返回当前运行的协程
 	 */
 	static Fiber::ptr GetThis();
 
 	/**
-	 * @brief 将协程切换到后台，并且设置为 READY 状态
+	 * @brief 将协程切换到记录中的主协程执行，并且设置为 READY 状态，即切换到后台
 	 */
 	static void YieldToReady();
 
 	/**
-	 * @brief 将协程切换到后台，并且设置为 HOLD 状态
+	 * @brief 将子协程切换到后台，并且设置为 HOLD 状态
 	 */
 	static void YieldToHold();
 

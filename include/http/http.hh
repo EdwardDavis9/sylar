@@ -214,6 +214,9 @@ class HttpRequest {
     void setParam(const std::string &key, const std::string &val);
     void setCookie(const std::string &key, const std::string &val);
 
+    bool isClose() const { return m_close;}
+    void setClose(bool v) { m_close = v;}
+
     void delHeader(const std::string &key);
     void delParam(const std::string &key);
     void delCookie(const std::string &key);
@@ -308,6 +311,9 @@ private:
     std::string m_reason;
     MapType m_headers;
 };
+
+std::ostream& operator<<(std::ostream& os, const HttpRequest& req);
+std::ostream& operator<<(std::ostream& os, const HttpResponse& resp);
 
 }; // namespace http
 

@@ -23,6 +23,10 @@ namespace sylar {
 
 			uint64_t getContentLength();
 
+		public:
+			static uint64_t GetHttpRequestBufferSize();
+			static uint64_t GetHttpRequestMaxBodySize();
+
 		private:
 			http_parser m_parser;
 			HttpRequest::ptr m_data;
@@ -45,6 +49,7 @@ namespace sylar {
 			void setError(int v) { m_error = v; }
 
 			uint64_t getContentLength();
+
 
 		private:
 		httpclient_parser m_parser;

@@ -17,17 +17,18 @@ Scheduler::Scheduler(size_t threads, bool use_caller, const std::string &name)
     SYLAR_ASSERT(threads > 0);
 
     if (use_caller) {
-        sylar::Fiber::GetThis(); // 创建一个主协程
-        --threads; // 当前线程也会被调度，所以 总线程数 = 需要创建的线程数-1
+        sylar::Fiber::GetThis();    // 创建一个主协程
+        --threads;                  // 当前线程也会被调度，所以 总线程数 = 需要创建的线程数-1
 
         // 确保当前线程中没有已存在的调度器，防止重复绑定。
         SYLAR_ASSERT(GetThis() == nullptr);
 
         // 将当前构造的这个 Scheduler 实例绑定到当前线程
         t_scheduler = this;
-        SYLAR_LOG_INFO(g_logger) << this;
-        SYLAR_LOG_INFO(g_logger) <<  t_scheduler;
+        // SYLAR_LOG_INFO(g_logger) << this;
+        // SYLAR_LOG_INFO(g_logger) <<  t_scheduler;
 
+        // 新建一个主协程
         m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));
         sylar::Thread::SetName(m_name);
 

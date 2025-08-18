@@ -70,7 +70,7 @@ void SocketStream::close()
 
 bool SocketStream::isConnected() const
 {
-	return 0;
+	return m_socket && m_socket->isConnected();
 }
 
 };

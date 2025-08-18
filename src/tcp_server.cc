@@ -46,7 +46,7 @@ namespace sylar {
                     << " addr=[" << addr->toString() << "]";
                 fails.push_back(addr);
             }
-            SYLAR_LOG_DEBUG(g_logger) << "bind success, wait for listen";
+            // SYLAR_LOG_DEBUG(g_logger) << "bind success, wait for listen";
 
             if(!sock->listen()) {
                 SYLAR_LOG_ERROR(g_logger) << "listen fail errno="
@@ -55,7 +55,8 @@ namespace sylar {
                 fails.push_back(addr);
                 continue;
             }
-            SYLAR_LOG_DEBUG(g_logger) << "listen success, wait for client connects";
+            // SYLAR_LOG_DEBUG(g_logger) << "listen success, "
+            //                               "wait for client connects";
             m_socks.push_back(sock);
         }
 
@@ -65,7 +66,7 @@ namespace sylar {
         }
 
         for(auto& i : m_socks) {
-            SYLAR_LOG_INFO(g_logger) << "server bind success: " << *i << " ToString end.";
+            SYLAR_LOG_INFO(g_logger) << "server bind success: " << *i ;
         }
 
         return true;
