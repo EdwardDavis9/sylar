@@ -1,3 +1,11 @@
+/**
+ * @file      config.hh
+ * @brief     配置模块
+ * @date      Tue Aug 19 18:52:58 2025
+ * @author    edward
+ * @copyright BSD-3-Clause
+ */
+
 #ifndef __SYLAR_CONFIG_H_
 #define __SYLAR_CONFIG_H_
 #include <memory>
@@ -20,53 +28,83 @@
 namespace sylar {
 
 /**
- * @brief 配置变量的抽象基类，用于定义通用接口。
- *
- * 该类提供配置项的名称、描述以及字符串序列化与反序列化接口。
+ * @class ConfigVarBase
+ * @brief 配置变量的抽象基类, 用于定义通用接口, 并提供配置项的名称,
+ * 描述以及字符串的序列化与反序列化接口.
  */
 class ConfigVarBase {
 
   public:
     using ptr = std::shared_ptr<ConfigVarBase>;
 
+    /**
+     * @brief     构造函数
+     * @param[in] name 配置参数名称[0-9a-z]
+     * @param[in] description 配置参数描述
+     */
     ConfigVarBase(const std::string &name, const std::string &description = "")
         : m_name(name), m_description(description)
     {
-        // 将 m_name中的元素 全部引用某个函数，在此处是转换成小写的形式
+        // 将 m_name中的元素 全部引用某个函数, 在此处是转换成小写的形式
         // 并写入原地址中
         std::transform(m_name.begin(), m_name.end(), m_name.begin(), ::tolower);
     }
 
+    /**
+     * @brief 析构函数
+     */
     virtual ~ConfigVarBase() {}
 
+    /**
+     * @brief 返回配置参数名称
+     */
     const std::string &getName() const { return m_name; }
+
+    /**
+     * @brief 返回配置参数描述
+     */
     const std::string &getDescription() const { return m_description; }
+
+    /**
+     * @brief 返回配置参数的类型名称
+     */
     virtual std::string getTypeName() const = 0;
 
-    virtual std::string toString()                  = 0;
+    /**
+     * @brief 转换成字符串
+     */
+    virtual std::string toString() = 0;
+
+    /**
+     * @brief 将字符串作为初始化参数
+     */
     virtual bool fromString(const std::string &val) = 0;
 
   private:
-    std::string m_name;
-    std::string m_description;
+    std::string m_name;        /**< 配置参数的名称 */
+    std::string m_description; /**< 配置参数的描述 */
 };
 
 /**
- * @berif 转换类型
- * @details 模板转换，通过lexical_cast 直接将输入类型转换
- *
+ * @class           模版转换类
+ * @brief           模板转换, 通过lexical_cast 直接将输入类型转换
  * @params[in. out] F 源类型
  * @params[in. out] T 目标类型
- * @return 指定类型
  */
 template <class F, class T>
 class LexicalCast {
   public:
+    /**
+     * @brief     类型转换
+     * @param[in] v 源类型值
+     * @return    返回转换后的目标类型值
+     */
     T operator()(const F &v) { return boost::lexical_cast<T>(v); }
 };
 
 /**
- * @berif string2vector
+ * @class 类型转换模板类片特化(YAML String 转换成 std::vector<T>)
+ * @brief string2vector
  */
 template <class T>
 class LexicalCast<std::string, std::vector<T>> {
@@ -78,7 +116,7 @@ class LexicalCast<std::string, std::vector<T>> {
         typename std::vector<T> vec;
         std::stringstream ss;
 
-        // 写入 stringstream 中，然后 push_back 进 vec 中
+        // 写入 stringstream 中, 然后 push_back 进 vec 中
         for (size_t i = 0; i < node.size(); ++i) {
             ss.str("");
             ss << node[i];
@@ -89,6 +127,7 @@ class LexicalCast<std::string, std::vector<T>> {
 };
 
 /**
+ * @class 类型转换模板类片特化(std::vector<T> 转换成 YAML String)
  * @brief vector2string
  */
 template <class T>
@@ -98,7 +137,7 @@ class LexicalCast<std::vector<T>, std::string> {
     {
         YAML::Node node;
 
-        // push 进 node 节点中，然后直接读入到 stringstream 中
+        // push 进 node 节点中, 然后直接读入到 stringstream 中
         for (auto &i : v) {
             node.push_back(YAML::Load(LexicalCast<T, std::string>()(i)));
         }
@@ -110,7 +149,8 @@ class LexicalCast<std::vector<T>, std::string> {
 };
 
 /**
- * @berif string2list
+ * @class 类型转换模板类片特化(YAML String 转换成 std::list<T>)
+ * @brief string2list
  */
 template <class T>
 class LexicalCast<std::string, std::list<T>> {
@@ -130,6 +170,7 @@ class LexicalCast<std::string, std::list<T>> {
 };
 
 /**
+ * @class 类型转换模板类片特化(std::list<T> 转换成 YAML String)
  * @brief list2string
  */
 template <class T>
@@ -149,7 +190,8 @@ class LexicalCast<std::list<T>, std::string> {
 };
 
 /**
- * @berif string2set
+ * @class 类型转换模板类片特化(YAML String 转换成 std::set<T>)
+ * @brief string2set
  */
 template <class T>
 class LexicalCast<std::string, std::set<T>> {
@@ -171,7 +213,8 @@ class LexicalCast<std::string, std::set<T>> {
 };
 
 /**
- * @berif set2string
+ * @class 类型转换模板类片特化(std::set<T> 转换成 YAML String)
+ * @brief set2string
  */
 template <class T>
 class LexicalCast<std::set<T>, std::string> {
@@ -191,7 +234,8 @@ class LexicalCast<std::set<T>, std::string> {
 };
 
 /**
- * string2unordered_set
+ * @class 类型转换模板类片特化(YAML String 转换成 std::unordered_set<T>)
+ * @brief string2unordered_set
  */
 template <class T>
 class LexicalCast<std::string, std::unordered_set<T>> {
@@ -212,7 +256,8 @@ class LexicalCast<std::string, std::unordered_set<T>> {
 };
 
 /**
- * @berif unordered_set2string
+ * @class 类型转换模板类片特化(std::unordered_set<T> 转换成 YAML String)
+ * @brief unordered_set2string
  */
 template <class T>
 class LexicalCast<std::unordered_set<T>, std::string> {
@@ -230,7 +275,8 @@ class LexicalCast<std::unordered_set<T>, std::string> {
 };
 
 /**
- * @berif string2map
+ * @class 类型转换模板类片特化(YAML String 转换成 std::map<std::string, T>)
+ * @brief string2map
  */
 template <class T>
 class LexicalCast<std::string, std::map<std::string, T>> {
@@ -253,7 +299,8 @@ class LexicalCast<std::string, std::map<std::string, T>> {
 };
 
 /**
- * @berif map2string
+ * @class 类型转换模板类片特化(std::map<std::string, T> 转换成 YAML String)
+ * @brief map2string
  */
 template <class T>
 class LexicalCast<std::map<std::string, T>, std::string> {
@@ -271,7 +318,9 @@ class LexicalCast<std::map<std::string, T>, std::string> {
 };
 
 /**
- * string2unordered_map
+ * @class 类型转换模板类片特化(YAML String 转换成
+ * std::unordered_map<std::string, T>)
+ * @brief string2unordered_map
  */
 template <class T>
 class LexicalCast<std::string, std::unordered_map<std::string, T>> {
@@ -292,7 +341,9 @@ class LexicalCast<std::string, std::unordered_map<std::string, T>> {
     }
 };
 /**
- * unordered_map2string
+ * @class 类型转换模板类片特化(std::unordered_map<std::string, T> 转换成 YAML
+ * String)
+ * @brief unordered_map2string
  */
 template <class T>
 class LexicalCast<std::unordered_map<std::string, T>, std::string> {
@@ -318,7 +369,7 @@ class ConfigVar : public ConfigVarBase {
 
   public:
     using RWMutexType = RWMutex;
-    using ptr = std::shared_ptr<ConfigVar>;
+    using ptr         = std::shared_ptr<ConfigVar>;
     using on_change_cb =
         std::function<void(const T &old_value, const T &new_value)>;
 
@@ -328,8 +379,8 @@ class ConfigVar : public ConfigVarBase {
     {}
 
     /**
-     * @brief 将内容转换成 string 类型
-     * @return 出错时，返回"", 否则返还成功转换成的string
+     * @brief  将内容转换成 string 类型
+     * @return 出错时, 返回"", 否则返还成功转换成的string
      */
     std::string toString() override
     {
@@ -347,9 +398,9 @@ class ConfigVar : public ConfigVarBase {
     }
 
     /**
-     * @brief 将传入的string类型 转换成当前类的所属类型, 即赋值操作
+     * @brief     将传入的string类型 转换成当前类的所属类型, 即赋值操作
      * @param[in] val 传入的待转化的数据
-     * @return 出错时，返回false, 否则返回 true
+     * @return    出错时, 返回false, 否则返回 true
      */
     bool fromString(const std::string &val) override
     {
@@ -359,16 +410,17 @@ class ConfigVar : public ConfigVarBase {
         } catch (std::exception &e) {
             SYLAR_LOG_ERROR(SYLAR_LOG_ROOT())
                 << "ConfigVar::toString exception" << e.what()
-                << " convert string to " << typeid(m_val).name()
-                << "- " << val;
+                << " convert string to " << typeid(m_val).name() << "- " << val;
         }
         return false;
     }
 
-    const T getValue() {
+    const T getValue()
+    {
         RWMutex::ReadLock lock(m_mutex);
         return m_val;
     }
+
     void setValue(const T &v)
     {
         {
@@ -376,7 +428,8 @@ class ConfigVar : public ConfigVarBase {
             if (v == m_val) {
                 return;
             }
-            for (auto &i: m_cbs) { // 在设置变量的时候，进行函数的回调，提示属性修改
+            for (auto &i : m_cbs)
+            { // 在设置变量的时候, 进行函数的回调, 提示属性修改
                 i.second(m_val, v);
             }
         }
@@ -386,7 +439,8 @@ class ConfigVar : public ConfigVarBase {
 
     std::string getTypeName() const override { return typeid(T).name(); };
 
-    uint64_t addListener(on_change_cb cb) {
+    uint64_t addListener(on_change_cb cb)
+    {
         static uint64_t s_fun_id = 0;
         RWMutexType::WriteLock writeLock(m_mutex);
         ++s_fun_id;
@@ -394,12 +448,14 @@ class ConfigVar : public ConfigVarBase {
         return s_fun_id;
     }
 
-    void delListener(uint64_t key) {
+    void delListener(uint64_t key)
+    {
         RWMutexType::WriteLock lock(m_mutex);
         m_cbs.erase(key);
     }
 
-    void clearListener() {
+    void clearListener()
+    {
         RWMutexType::WriteLock lock(m_mutex);
         m_cbs.clear();
     }
@@ -415,26 +471,23 @@ class ConfigVar : public ConfigVarBase {
     T m_val;
     RWMutexType m_mutex;
 
-    // 变更回调函数，key 要唯一，用map将回调函数包装，可以方便的添加或删除
+    // 变更回调函数, key 要唯一, 用map将回调函数包装, 可以方便的添加或删除
     std::map<uint64_t, on_change_cb> m_cbs;
 };
 
 class Config {
   public:
-    using RWMutexType = RWMutex;
+    using RWMutexType  = RWMutex;
     using ConfigVarMap = std::unordered_map<std::string, ConfigVarBase::ptr>;
 
     /**
-     * @berif 查找或创建指定成员
-     * @details
-     * 在创建指定成员前，会先查找内部数据结构，存在的话，
-     * 那么直接返回存在的节点，否则就创建当前节点
-     * @param[in, out] name : const std::string &, 表示当前键名
-     * @param[in, out] default_value : const T&,
-     * 表示当前的键值，类型为模板类型
-     * @param[in, out] description : const std::string &,
-     * 表示当前键名的详细信息
-     * @return 返回获得的目标节点信息
+     * @brief          查找或创建指定成员
+     * @details        在创建指定成员前, 会先查找内部数据结构, 存在的话,
+     * 那么直接返回存在的节点, 否则就创建当前节点
+     * @param[in, out] name  表示当前键名
+     * @param[in, out] default_value 表示当前的键值, 类型为模板类型
+     * @param[in, out] description  表示当前键名的详细信息
+     * @return         返回获得的目标节点信息
      */
     template <class T>
     static typename ConfigVar<T>::ptr
@@ -445,8 +498,7 @@ class Config {
         RWMutexType::WriteLock lock(GetMutex());
         auto it = GetDatas().find(name);
         if (it != GetDatas().end()) {
-            auto tmp =
-                std::dynamic_pointer_cast<ConfigVar<T>>( it->second);
+            auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
             // 向子类转换
 
             if (tmp) {
@@ -480,7 +532,7 @@ class Config {
             // new ConfigVar<T>(name, default_value, description));
             std::make_shared<ConfigVar<T>>(name, default_value, description));
 
-        // 增加一个键值对：name:ConfiVar
+        // 增加一个键值对: name:ConfiVar
         GetDatas()[name] = v;
 
         return v;
@@ -497,7 +549,7 @@ class Config {
 
         return std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
         // return std::static_pointer_cast<ConfigVar<T>>(it->second);
-        // 使用这个，效率好一点, 编译期进行类型转换
+        // 使用这个, 效率好一点, 编译期进行类型转换
     }
 
     static void LoadFromYaml(const YAML::Node &root);
@@ -512,7 +564,8 @@ class Config {
         return s_datas;
     }
 
-    static RWMutexType& GetMutex() {
+    static RWMutexType &GetMutex()
+    {
         static RWMutexType s_mutex;
         return s_mutex;
     }

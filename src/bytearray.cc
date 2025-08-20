@@ -225,10 +225,10 @@ int8_t ByteArray::readFint8()
 #define XX(type)								                \
 	type v;										                \
 	read(&v, sizeof(v));						               	\
-	if(m_endian == SYLAR_BYTE_ORDER) {			\
+	if(m_endian == SYLAR_BYTE_ORDER) {			                \
 		return v;								                \
-	} else {								                    	\
-		return byteswap(v);						            \
+	} else {								                    \
+		return byteswap(v);						                \
 	}
 
 int16_t ByteArray::readFint16()
@@ -432,7 +432,7 @@ void ByteArray::read(void *buf, size_t size)
 
 void ByteArray::read(void *buf, size_t size, size_t position) const
 {
-	if(size >getReadSize()){
+	if(size > (m_size - position)){
 		throw std::out_of_range("not enough len");
 	}
 

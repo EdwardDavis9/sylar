@@ -27,6 +27,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 		int read_size
 			= read(data + unparsed_offset, buffer_size - unparsed_offset);
 		if (read_size <= 0) {
+			close();
 			return nullptr;
 		}
 		read_size += unparsed_offset;
@@ -34,12 +35,14 @@ HttpRequest::ptr HttpSession::recvRequest()
 		// 解析数据
 		size_t nparser = parser->execute(data, read_size);
 		if(parser->hasError()) {
+			close();
 			return nullptr;
 		}
 
 		unparsed_offset = read_size - nparser;
 		if(unparsed_offset == (int)buffer_size) {
 			// 首次请求解析的数据等于当前的 buffer_size, 那么说明是恶意请求, 数据过大
+			close();
 			return nullptr;
 		}
 
@@ -71,6 +74,7 @@ HttpRequest::ptr HttpSession::recvRequest()
             size_t old = body.size();
             body.resize(old + need); // 先扩大 size
             if (readFixSize(&body[old], need) <= 0) {
+				close();
                 return nullptr;
             }
         }
@@ -81,22 +85,21 @@ HttpRequest::ptr HttpSession::recvRequest()
 		int len = 0;
 		if(content_size >= unparsed_offset) {
 			memcpy(&body[0], data, unparsed_offset);
-	    	// 缓冲区里的数据还不足以把整个 body 填满, 即还存在剩余的请求体
-			body.append(data, unparsed_offset);
+			len = unparsed_offset;
 		}
 		else {
 			memcpy(&body[0], data, content_size);
 		    // 缓冲区中的未解析数据比 content_size 还大
 			// 说明缓冲区里的数据已经能把整个 body 填满, 即还存其他的请求数据
 			// 因此本次请求解析只需要读取 content_size 个数据即可
-			body.append(data, content_size);
 			len = content_size;
 		}
 		content_size -= unparsed_offset;
 
 		if(content_size > 0) {
 			如果还未读取完毕请求体的话, 接下来读取剩下的请求体
-			if(readFixSize(&body[body.size()], content_size) <= 0) {
+			if(readFixSize(&body[len], content_size) <= 0) {
+				close();
 				return nullptr;
 			}
 		}

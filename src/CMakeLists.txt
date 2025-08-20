@@ -23,7 +23,32 @@ file(
 list(REMOVE_ITEM PROJECT_SOURCES ${CCLS_CACHE_FILES})
 list(REMOVE_ITEM PROJECT_SOURCES ${SYLAR_TEST_FILES})
 
-add_library(${PROJECT_NAME} SHARED ${PROJECT_SOURCES})
+file(GLOB RL_CC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/rl/*.rl")
+set(RL_CC_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rl")
+set(RL_CC_OUTPUTS "")
+
+# ragelmaker(
+# sylar/http/http11_parser.rl
+# LIB_SRC
+# ${CMAKE_CURRENT_SOURCE_DIR}/sylar/http
+# )
+#
+# ragelmaker(
+# sylar/http/httpclient_parser.rl
+# LIB_SRC
+# ${CMAKE_CURRENT_SOURCE_DIR}/sylar/http
+# )
+
+foreach(rl_file ${RL_CC_FILES})
+    ragelmaker(${rl_file} RL_CC_OUTPUTS ${RL_CC_OUT_DIR})
+endforeach()
+
+add_library(
+  ${PROJECT_NAME}
+  SHARED
+  ${PROJECT_SOURCES}
+  ${RL_CC_OUTPUTS}
+)
 
 target_include_directories(
   ${PROJECT_NAME}

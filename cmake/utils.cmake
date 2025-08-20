@@ -1,6 +1,6 @@
 # This function will overwrite the standard predefined macro "__FILE__".
 # "__FILE__" expands to the name of the current input file, but cmake
-# input the absolute path of source file, any code using the macro 
+# input the absolute path of source file, any code using the macro
 # would expose sensitive information, such as MORDOR_THROW_EXCEPTION(x),
 # so we'd better overwirte it with filename.
 function(force_redefine_file_macro_for_sources targetname)
@@ -19,4 +19,39 @@ function(force_redefine_file_macro_for_sources targetname)
             PROPERTY COMPILE_DEFINITIONS ${defs}
             )
     endforeach()
+endfunction()
+
+function(ragelmaker src_rl outputlist outputdir)
+    #Create a custom build step that will call ragel on the provided src_rl file.
+    #The output .cpp file will be appended to the variable name passed in outputlist.
+
+    # get no extension file
+    get_filename_component(src_file ${src_rl} NAME_WE)
+
+    # set target file
+    set(rl_out ${outputdir}/${src_file}.rl.cc)
+
+    #adding to the list inside a function takes special care, we cannot use list(APPEND...)
+    #because the results are local scope only
+    # append var to parent scope
+    set(${outputlist} ${${outputlist}} ${rl_out} PARENT_SCOPE)
+
+    #Warning: The " -S -M -l -C -T0  --error-format=msvc" are added to match existing window invocation
+    #we might want something different for mac and linux
+    # set generate target file cmd
+    add_custom_command(
+        OUTPUT ${rl_out}
+        COMMAND ragel ${src_rl} -o ${rl_out} -l -C -G2  --error-format=msvc
+        DEPENDS ${src_rl}
+        )
+    set_source_files_properties(${rl_out} PROPERTIES GENERATED TRUE)
+endfunction(ragelmaker)
+
+
+# set generate executablt cmd
+function(sylar_add_executable targetname srcs depends libs)
+    add_executable(${targetname} ${srcs})
+    add_dependencies(${targetname} ${depends})
+    force_redefine_file_macro_for_sources(${targetname})
+    target_link_libraries(${targetname} ${libs})
 endfunction()

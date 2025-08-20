@@ -22,6 +22,7 @@ namespace sylar {
 			void setError(int v) { m_error = v; }
 
 			uint64_t getContentLength();
+			const http_parser& getParser() const { return m_parser; }
 
 		public:
 			static uint64_t GetHttpRequestBufferSize();
@@ -41,7 +42,14 @@ namespace sylar {
 			using ptr = std::shared_ptr<HttpResponseParser>;
 			HttpResponseParser();
 
-			size_t execute(char* daata, size_t len);
+			/**
+			* @brief         解析数据
+			* @param[in,out] data 待解析的数据
+			* @param[in]     len 待解析数据的长度
+			* @param[in]     chunck 是否分段
+			* @return        成功解析的字符数
+			*/
+			size_t execute(char* data, size_t len, bool chunck);
 			int isFinished();
 			int hasError();
 
@@ -49,6 +57,11 @@ namespace sylar {
 			void setError(int v) { m_error = v; }
 
 			uint64_t getContentLength();
+			const httpclient_parser& getParser() const { return m_parser; }
+
+		public:
+			static uint64_t GetHttpResponseBufferSize();
+			static uint64_t GetHttpResponseMaxBodySize();
 
 
 		private:

@@ -36,10 +36,10 @@ void HttpServer::handleClient(Socket::ptr client)
 
 		// rsp->setBody("hello sylar");
 
-       SYLAR_LOG_INFO(g_logger) << "requst:" << std::endl
-           << *req;
-       SYLAR_LOG_INFO(g_logger) << "response:" << std::endl
-           << *rsp;
+       // SYLAR_LOG_INFO(g_logger) << "requst:" << std::endl
+       //     << *req;
+       // SYLAR_LOG_INFO(g_logger) << "response:" << std::endl
+       //     << *rsp;
 
 		session->sendResponse(rsp);
 	} while(m_isKeepAlive);
