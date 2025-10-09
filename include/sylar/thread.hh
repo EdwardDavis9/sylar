@@ -16,6 +16,7 @@
 
 namespace sylar {
 
+// 对 semaphore 的一个基本的封装
 class Semaphore : Noncopyable{
 public:
 	Semaphore(uint32_t count = 0);
@@ -24,14 +25,12 @@ public:
 	void wait();
 	void notify();
 
-// private:
-// 	Semaphore(const Semaphore&) = delete;
-// 	Semaphore(const Semaphore&&) = delete;
-// 	Semaphore& operator=(const Semaphore&) = delete;
 
 private:
 	sem_t m_semaphore;
 };
+
+// RAII ()->acquire, ~()->release
 
 template<class T>
 struct ScopedLockImpl {
@@ -61,7 +60,7 @@ struct ScopedLockImpl {
 	}
 
 	private:
-	T & m_mutex;
+	T & m_mutex; // 实际的锁对象
 	bool m_locked;
 };
 
@@ -207,6 +206,7 @@ public:
 	void unlock() {};
 };
 
+// 依赖系统的用户态的自旋
 class Spinlock:Noncopyable {
 public:
 	using Lock = ScopedLockImpl<Spinlock>;
@@ -232,6 +232,8 @@ private:
 	pthread_spinlock_t m_mutex;
 };
 
+
+// 完全基于用户态的自旋
 class CASLock : Noncopyable {
 public:
 	using Lock = ScopedLockImpl<CASLock>;
@@ -283,7 +285,7 @@ private:
 	pthread_t m_thread = 0;  /**< 线程 */
 
 	std::function<void()> m_cb; /**< 线程回调函数 */
-	std::string m_name;         /**< 线程名 */
+	std::string m_name = "Thread_";         /**< 线程名 */
 
 	Semaphore m_semaphore;
 };

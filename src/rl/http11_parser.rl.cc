@@ -49,7 +49,7 @@
 /** Machine **/
 
 
-#line 255 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
+#line 256 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 
 
 /** Data **/
@@ -62,7 +62,7 @@ static const int http_parser_error = 0;
 static const int http_parser_en_main = 1;
 
 
-#line 259 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
+#line 260 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 
 int http_parser_init(http_parser *parser) {
   int cs = 0;
@@ -72,7 +72,7 @@ int http_parser_init(http_parser *parser) {
 	cs = http_parser_start;
 	}
 
-#line 263 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
+#line 264 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
   parser->cs = cs;
   parser->body_start = 0;
   parser->content_len = 0;
@@ -230,7 +230,7 @@ tr37:
       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
   }
 	goto st4;
-tr43:
+tr44:
 #line 53 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{MARK(mark, p); }
 #line 79 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
@@ -239,14 +239,14 @@ tr43:
       parser->fragment(parser->data, PTR_TO(mark), LEN(mark, p));
   }
 	goto st4;
-tr46:
+tr47:
 #line 79 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{
     if(parser->fragment != NULL)
       parser->fragment(parser->data, PTR_TO(mark), LEN(mark, p));
   }
 	goto st4;
-tr53:
+tr54:
 #line 84 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{MARK(query_start, p); }
 #line 85 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
@@ -260,7 +260,7 @@ tr53:
       parser->request_uri(parser->data, PTR_TO(mark), LEN(mark, p));
   }
 	goto st4;
-tr57:
+tr58:
 #line 85 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{
     if(parser->query_string != NULL)
@@ -760,26 +760,29 @@ case 20:
  parser->uri_relaxed  ) _widec += 256;
 	}
 	switch( _widec ) {
-		case 32: goto tr43;
-		case 33: goto tr44;
+		case 32: goto tr44;
+		case 33: goto tr43;
 		case 37: goto tr45;
-		case 61: goto tr44;
-		case 95: goto tr44;
-		case 126: goto tr44;
-		case 606: goto tr44;
-		case 635: goto tr44;
-		case 637: goto tr44;
+		case 61: goto tr43;
+		case 95: goto tr43;
+		case 126: goto tr43;
+		case 606: goto tr43;
+		case 635: goto tr43;
+		case 637: goto tr43;
 	}
-	if ( _widec < 63 ) {
-		if ( 36 <= _widec && _widec <= 59 )
-			goto tr44;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
-			goto tr44;
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
+			goto tr43;
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto tr43;
+		} else if ( _widec >= 63 )
+			goto tr43;
 	} else
-		goto tr44;
+		goto tr43;
 	goto st0;
-tr44:
+tr43:
 #line 53 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{MARK(mark, p); }
 	goto st21;
@@ -787,7 +790,7 @@ st21:
 	if ( ++p == pe )
 		goto _test_eof21;
 case 21:
-#line 711 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 714 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -810,7 +813,7 @@ case 21:
  parser->uri_relaxed  ) _widec += 256;
 	}
 	switch( _widec ) {
-		case 32: goto tr46;
+		case 32: goto tr47;
 		case 33: goto st21;
 		case 37: goto st22;
 		case 61: goto st21;
@@ -820,11 +823,14 @@ case 21:
 		case 635: goto st21;
 		case 637: goto st21;
 	}
-	if ( _widec < 63 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st21;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st21;
+		} else if ( _widec >= 63 )
 			goto st21;
 	} else
 		goto st21;
@@ -837,7 +843,7 @@ st22:
 	if ( ++p == pe )
 		goto _test_eof22;
 case 22:
-#line 756 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 762 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto st23;
@@ -868,7 +874,7 @@ st24:
 	if ( ++p == pe )
 		goto _test_eof24;
 case 24:
-#line 785 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 791 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto st25;
@@ -899,7 +905,7 @@ st26:
 	if ( ++p == pe )
 		goto _test_eof26;
 case 26:
-#line 814 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 820 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -934,11 +940,14 @@ case 26:
 		case 635: goto st26;
 		case 637: goto st26;
 	}
-	if ( _widec < 64 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st26;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st26;
+		} else if ( _widec >= 64 )
 			goto st26;
 	} else
 		goto st26;
@@ -951,7 +960,7 @@ st27:
 	if ( ++p == pe )
 		goto _test_eof27;
 case 27:
-#line 861 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 870 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto st28;
@@ -994,7 +1003,7 @@ st29:
 	if ( ++p == pe )
 		goto _test_eof29;
 case 29:
-#line 900 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 909 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -1017,27 +1026,30 @@ case 29:
  parser->uri_relaxed  ) _widec += 256;
 	}
 	switch( _widec ) {
-		case 32: goto tr53;
-		case 33: goto tr54;
+		case 32: goto tr54;
+		case 33: goto tr53;
 		case 35: goto tr55;
 		case 37: goto tr56;
-		case 61: goto tr54;
-		case 95: goto tr54;
-		case 126: goto tr54;
-		case 606: goto tr54;
-		case 635: goto tr54;
-		case 637: goto tr54;
+		case 61: goto tr53;
+		case 95: goto tr53;
+		case 126: goto tr53;
+		case 606: goto tr53;
+		case 635: goto tr53;
+		case 637: goto tr53;
 	}
-	if ( _widec < 63 ) {
-		if ( 36 <= _widec && _widec <= 59 )
-			goto tr54;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
-			goto tr54;
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
+			goto tr53;
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto tr53;
+		} else if ( _widec >= 63 )
+			goto tr53;
 	} else
-		goto tr54;
+		goto tr53;
 	goto st0;
-tr54:
+tr53:
 #line 84 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 	{MARK(query_start, p); }
 	goto st30;
@@ -1045,7 +1057,7 @@ st30:
 	if ( ++p == pe )
 		goto _test_eof30;
 case 30:
-#line 946 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 958 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -1068,7 +1080,7 @@ case 30:
  parser->uri_relaxed  ) _widec += 256;
 	}
 	switch( _widec ) {
-		case 32: goto tr57;
+		case 32: goto tr58;
 		case 33: goto st30;
 		case 35: goto tr59;
 		case 37: goto st31;
@@ -1079,11 +1091,14 @@ case 30:
 		case 635: goto st30;
 		case 637: goto st30;
 	}
-	if ( _widec < 63 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st30;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st30;
+		} else if ( _widec >= 63 )
 			goto st30;
 	} else
 		goto st30;
@@ -1096,7 +1111,7 @@ st31:
 	if ( ++p == pe )
 		goto _test_eof31;
 case 31:
-#line 992 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 1007 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) < 65 ) {
 		if ( 48 <= (*p) && (*p) <= 57 )
 			goto st32;
@@ -1127,7 +1142,7 @@ st33:
 	if ( ++p == pe )
 		goto _test_eof33;
 case 33:
-#line 1021 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 1036 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -1163,11 +1178,14 @@ case 33:
 		case 635: goto st26;
 		case 637: goto st26;
 	}
-	if ( _widec < 64 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st26;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st26;
+		} else if ( _widec >= 64 )
 			goto st26;
 	} else
 		goto st26;
@@ -3375,7 +3393,7 @@ st173:
 	if ( ++p == pe )
 		goto _test_eof173;
 case 173:
-#line 3240 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3258 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -3466,11 +3484,14 @@ case 174:
 		case 635: goto tr203;
 		case 637: goto tr203;
 	}
-	if ( _widec < 64 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto tr203;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto tr203;
+		} else if ( _widec >= 64 )
 			goto tr203;
 	} else
 		goto tr203;
@@ -3706,7 +3727,7 @@ st194:
 	if ( ++p == pe )
 		goto _test_eof194;
 case 194:
-#line 3563 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3584 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) < 48 ) {
 		if ( 45 <= (*p) && (*p) <= 46 )
 			goto st195;
@@ -3751,7 +3772,7 @@ st196:
 	if ( ++p == pe )
 		goto _test_eof196;
 case 196:
-#line 3606 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3627 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) == 62 )
 		goto st197;
 	goto st196;
@@ -3810,7 +3831,7 @@ st349:
 	if ( ++p == pe )
 		goto _test_eof349;
 case 349:
-#line 3660 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3681 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	goto st0;
 tr3:
 #line 53 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
@@ -3820,7 +3841,7 @@ st198:
 	if ( ++p == pe )
 		goto _test_eof198;
 case 198:
-#line 3668 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3689 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	_widec = (*p);
 	if ( (*p) < 123 ) {
 		if ( 94 <= (*p) && (*p) <= 94 ) {
@@ -3875,7 +3896,7 @@ st199:
 	if ( ++p == pe )
 		goto _test_eof199;
 case 199:
-#line 3718 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3739 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) == 123 )
 		goto tr232;
 	goto st0;
@@ -3887,7 +3908,7 @@ st200:
 	if ( ++p == pe )
 		goto _test_eof200;
 case 200:
-#line 3728 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
+#line 3749 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl.cc"
 	if ( (*p) == 125 )
 		goto st201;
 	goto st200;
@@ -4009,11 +4030,14 @@ case 205:
 		case 635: goto st205;
 		case 637: goto st205;
 	}
-	if ( _widec < 64 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st205;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st205;
+		} else if ( _widec >= 64 )
 			goto st205;
 	} else
 		goto st205;
@@ -4081,11 +4105,14 @@ case 208:
 		case 635: goto st205;
 		case 637: goto st205;
 	}
-	if ( _widec < 64 ) {
-		if ( 36 <= _widec && _widec <= 59 )
+	if ( _widec < 36 ) {
+		if ( _widec <= -1 )
 			goto st205;
-	} else if ( _widec > 90 ) {
-		if ( 97 <= _widec && _widec <= 122 )
+	} else if ( _widec > 59 ) {
+		if ( _widec > 90 ) {
+			if ( 97 <= _widec && _widec <= 122 )
+				goto st205;
+		} else if ( _widec >= 64 )
 			goto st205;
 	} else
 		goto st205;
@@ -6625,7 +6652,7 @@ case 347:
 	_out: {}
 	}
 
-#line 298 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
+#line 299 "/home/edward/Code/cc/sylar/src/rl/http11_parser.rl"
 
   assert(p <= pe && "Buffer overflow after parsing.");
 

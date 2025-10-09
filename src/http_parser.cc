@@ -8,11 +8,13 @@ namespace http {
 
 	static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
+  // 静态初始化为 4k
 	static sylar::ConfigVar<uint64_t>::ptr g_http_request_buffer_size =
 	sylar::Config::Lookup("http.request.buffer_size",
 						  (uint64_t)(4*1024),
 						  "http.request.buffer_size");
 
+  // 静态初始化为 64MB
 	static sylar::ConfigVar<uint64_t>::ptr g_http_request_max_body_size =
 		sylar::Config::Lookup("http.request.max_body_size",
 							  (uint64_t)(64* 1024 * 1024),
@@ -21,13 +23,15 @@ namespace http {
 	static uint64_t s_http_request_buffer_size = 0;
 	static uint64_t s_http_request_max_body_size = 0;
 
+  // 静态初始化为 4k
 	static sylar::ConfigVar<uint64_t>::ptr g_http_response_buffer_size =
 	sylar::Config::Lookup("http.response.buffer_size",
 						  (uint64_t)(4*1024),
 						  "http.response.buffer_size");
 
+  // 静态初始化为 64MB
 	static sylar::ConfigVar<uint64_t>::ptr g_http_response_max_body_size =
-		sylar::Config::Lookup("http.request.max_body_size",
+		sylar::Config::Lookup("http.response.max_body_size",
 							  (uint64_t)(64* 1024 * 1024),
 							  "http response max body size");
 
@@ -84,6 +88,7 @@ namespace http {
 	}
 
 	void on_request_fragment(void *data, const char* at, size_t length) {
+	// SYLAR_LOG_INFO(g_logger) <<  "on_request_fragment" << std::string(at, length);
 		HttpRequestParser* parser = static_cast<HttpRequestParser*>(data);
 		parser->getData()->setFragment(std::string(at, length));
 	}
@@ -108,7 +113,7 @@ namespace http {
 		} else {
 			SYLAR_LOG_WARN(g_logger) << "invaild http request version: "
 				<< std::string(at, length);
-			parser->setError(1001);
+			parser->setError(1001); // 无效的版本
 			return;
 		}
 
@@ -124,7 +129,8 @@ namespace http {
 		HttpRequestParser* parser = static_cast<HttpRequestParser*>(data);
 		if(flen == 0) {
 			SYLAR_LOG_WARN(g_logger) << "invaild http request field lenght ==0";
-			// parser->setError(1002); // 设置后，如果head超出缓存大小，就会返回null
+			// 字段无效, 不代表报文出现致命错误
+			// parser->setError(1002); // 设置后, 如果head超出缓存大小, 就会返回null
 			return;
 		}
 		parser->getData()->setHeader(std::string(filed, flen),
@@ -206,7 +212,7 @@ namespace http {
 		HttpResponseParser* parser = static_cast<HttpResponseParser*>(data);
 		if(flen == 0) {
 			SYLAR_LOG_WARN(g_logger) << "invaild http response field length == 0";
-			// parser->setError(1002); // 设置后，如果超出缓冲大小，那么直接就返回null了
+			// parser->setError(1002); // 设置后, 如果超出缓冲大小, 那么直接就返回null了
 			return;
 		}
 		parser->getData()->setHeader(std::string(field, flen),
@@ -229,7 +235,8 @@ namespace http {
 	}
 
 	size_t HttpResponseParser::execute(char* data, size_t len, bool chunck) {
-		if(chunck) {
+		// chunk 是长度头+数据块，每次都需要重新进行解析
+		if(chunck) { // 是分块的话, 就需要重新解析
 			httpclient_parser_init(&m_parser);
 		}
 		size_t offset = httpclient_parser_execute(&m_parser, data, len, 0);

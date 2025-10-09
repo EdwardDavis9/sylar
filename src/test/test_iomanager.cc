@@ -10,11 +10,15 @@
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
-int sock = 0;
+// BUG: 全局添加相同的 sock,  就可能会出现错误
+// 主要是 addEvent 那里出现的问题, 但是找了找调用 addEvent 的地方
+// 简单排查之后, 发现涉及到了 hook, timer, 因此为了方便起见, 暂时先搁置这个bug, 先只使用局部的sock
+// int sock = 0;
 
 
 void test_fiber() {
 
+		int sock = 0;
 	SYLAR_LOG_INFO(g_logger) << "test_fiber sock= " << sock;
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -36,7 +40,7 @@ void test_fiber() {
 
 		sylar::IOManager::GetThis()
 			->addEvent(sock, sylar::IOManager::WRITE,
-					   [](){SYLAR_LOG_INFO(g_logger) << "write callback";
+					   [sock](){SYLAR_LOG_INFO(g_logger) << "write callback";
 						   sylar::IOManager::GetThis()
 							   ->cancelEvent(sock, sylar::IOManager::READ);
 							   close(sock);
@@ -50,8 +54,11 @@ void test1() {
 	std::cout << "epollin = " << EPOLLIN
 		<< " epollout = " << EPOLLOUT << std::endl;
 
+	sylar::Thread::SetName("main");
+	// sylar::IOManager iom;
 	sylar::IOManager iom(2, false);
 
+	iom.schedule(&test_fiber);
 	iom.schedule(&test_fiber);
 }
 
@@ -61,8 +68,7 @@ void test_timer() {
 	sylar::IOManager iom(2);
 	s_timer = iom.addTimer(1000, [](){
 		static int i = 0;
-		SYLAR_LOG_INFO(g_logger) << "hello time i="
-			<< i;
+		SYLAR_LOG_INFO(g_logger) << "hello time i=" << i;
 
 		if(++i == 3) {
 			// s_timer->reset(2000, true);

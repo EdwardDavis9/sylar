@@ -7,6 +7,7 @@
 #include "sylar/fd_manager.hh"
 #include "sylar/log.hh"
 #include <stdarg.h>
+#include "sylar/macro.hh"
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
@@ -46,6 +47,7 @@ void hook_init()
         return;
     }
 
+// HOOK 的关键
 #define XX(name) name##_f = (name##_fun)dlsym(RTLD_NEXT, #name);
     HOOK_FUN(XX);
 #undef XX
@@ -104,7 +106,7 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name,
         return -1;
     }
 
-    // 如果不是 socket, 或者已经设置了非阻塞模式,  那么调用原始的函数
+    // 如果不是 socket, 或在用户层上设置了非阻塞模式, 那么调用原始函数
     if (!ctx->isSocket() || ctx->getUserNonblock()) {
         return fun(fd, std::forward<Args>(args)...);
     }
@@ -125,7 +127,7 @@ retry:
         n = fun(fd, std::forward<Args>(args)...);
     }
 
-    // 如果是 EAGAIN(资源暂时不可用, 非阻塞IO常见返回), 进入等待事件流程
+    // 如果是 EAGAIN(资源暂时不可用, 非阻塞IO常见返回), 阻塞状态, 进入等待事件流程
     if (n == -1 && errno == EAGAIN) {
 
         // 获取当前线程的 iomanager. 即事件调度器
@@ -137,8 +139,8 @@ retry:
         if (to != (uint64_t)-1) {
             timer = iom->addConditionTimer(
                 to,                         // 超时时间
-                [winfo, fd, iom, event]() { // 定时器的触发执行函数
-                    auto t = winfo.lock();
+                [winfo, fd, iom, event]() { // 条件定时器的超时逻辑
+                    auto t = winfo.lock();  // 临时提升为智能指针
                     if (!t || t->cancelled) {
                         return; // 避免重复取消
                     }
@@ -153,7 +155,7 @@ retry:
         // 添加一个IO事件监听, 比如 EPOLLIN(读) 或 EPOLLOUT(写)
         int rt = iom->addEvent(fd, (sylar::IOManager::Event)(event));
 
-        if (rt) {
+        if (SYLAR_UNLICKLY(rt)) {
             // 添加失败时, 进行日志提醒
             SYLAR_LOG_ERROR(g_logger)
                 << hook_fun_name << " addEvent(" << fd << ", " << event << " )";
@@ -167,14 +169,17 @@ retry:
             // 让出协程的执行权
             sylar::Fiber::YieldToHold();
 
+            // 正常回调回来
             if (timer) {
-                timer->cancel(); // 正常唤醒
+                timer->cancel();
             }
-            if (tinfo->cancelled) { // 超时后强制唤醒
+            if (tinfo->cancelled) {
                 errno = tinfo->cancelled;
                 return -1;
             }
 
+            SYLAR_ASSERT(sylar::Fiber::GetThis()->getState()
+                         == sylar::Fiber::EXEC);
             goto retry;
         }
     }
@@ -190,24 +195,14 @@ HOOK_FUN(XX);
 unsigned int sleep(unsigned int seconds)
 {
     if (!sylar::t_hook_enable) {
-        // SYLAR_LOG_INFO(g_logger) << "sleep_f---------------------------";
         return sleep_f(seconds);
     }
 
     sylar::Fiber::ptr fiber = sylar::Fiber::GetThis();
-    // SYLAR_LOG_INFO(g_logger) << "fiber " << fiber;
-    sylar::IOManager *iom   = sylar::IOManager::GetThis();
-    // SYLAR_LOG_INFO(g_logger) << "iom " << iom << ", "  << &iom;
+    sylar::IOManager *iom = sylar::IOManager::GetThis();
     iom->addTimer(seconds * 1000, [iom, fiber]() { iom->schedule(fiber, -1); });
 
-    // iom->addTimer(seconds * 1000, std::bind((void(sylar::Scheduler::*)
-    //         (sylar::Fiber::ptr, int thread))&sylar::IOManager::schedule
-    //         ,iom, fiber, -1));
-    // SYLAR_LOG_INFO(g_logger) << "iom addtimer";
-
     sylar::Fiber::YieldToHold();
-    // SYLAR_LOG_INFO(g_logger) << "fiber yield";
-
     return 0;
 }
 
@@ -577,5 +572,4 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
 
     return setsockopt_f(sockfd, level, optname, optval, optlen);
 }
-
 }

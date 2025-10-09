@@ -4,11 +4,6 @@
 
 namespace sylar {
 
-/**
- * @brief 查找字符串对应的底层结构
- * @param[in] name 待查找的字符串
- * @return nullptr or ConfigVarBase
- */
 ConfigVarBase::ptr Config::LookupBase(const std::string &name)
 {
     RWMutex::ReadLock lock(GetMutex());
@@ -17,8 +12,8 @@ ConfigVarBase::ptr Config::LookupBase(const std::string &name)
 }
 
 /**
- * @brief 列出所有的节点成员
- * @details 遍历节点，并将节点的内容放到一个list中
+ * @brief     列出所有的节点成员
+ * @details   遍历节点，并将节点的内容放到一个list中
  * @param[in] &prefix, 表示当前节点的前置信息
  * @param[in] &node, 当前待遍历的节点
  * @param[in] &output, 存放处理完成信息的list
@@ -53,14 +48,11 @@ ListAllMember(const std::string &prefix,
     }
 }
 
-/**
- * @brief 从yaml文件中加载配置
- * @details Description
- * @param[in] root Description
- */
 void Config::LoadFromYaml(const YAML::Node &root)
 {
     std::list<std::pair<std::string, const YAML::Node>> all_nodes;
+
+    // 递归加载配置节点到容器
     ListAllMember("", root, all_nodes);
 
     for (auto &i : all_nodes) {
@@ -75,22 +67,20 @@ void Config::LoadFromYaml(const YAML::Node &root)
         ConfigVarBase::ptr var = LookupBase(key);
 
         if (var) {
-            if (i.second.IsScalar()) { // 如果是最简类型
-
-                // 开始赋值
+            if (i.second.IsScalar()) {
                 var->fromString(i.second.Scalar());
             }
-            else { // 如果是复杂嵌套类型
+            else {
                 std::stringstream ss;
                 ss << i.second;
                 var->fromString(ss.str());
-                // var->fromString(YAML::Dump(i.second));
             }
         }
 
     }
 }
 
+// 访问者模式
 void Config::Visit(std::function<void (ConfigVarBase::ptr)> cb)  {
     RWMutexType::ReadLock lock(GetMutex());
 

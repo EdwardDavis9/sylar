@@ -49,7 +49,7 @@ class ByteArray {
 
         char *ptr;   /**< 当前字符指针 */
         Node *next;  /**< 下一个节点地址 */
-        size_t size; /**< 当前 Node 的大小(通常为 m_baseSize)*/
+        size_t size; /**< 当前 Node 的大小(通常为 m_baseSize) */
     };
 
     /**
@@ -378,14 +378,14 @@ class ByteArray {
     /**
      * @brief     写入 size 长度的数据
      * @post      m_position += size, 如果 m_position>m_size 则
-     * m_size=m_position
+     *            m_size=m_position
      * @param[in] buff 内存缓存指针
      * @param[in] size 数据大小
      */
     void write(const void *buf, size_t size);
 
     /**
-     * @brief     读取size长度的数据
+     * @brief     读取size长度的数据 non-const
      * @post      m_position += size, 若 m_position>m_size 则 m_size=m_position
      * @param[in] size 数据大小
      * @exception 如果getReadSize() < size 则抛出 std::out_of_range
@@ -393,7 +393,7 @@ class ByteArray {
     void read(void *buf, size_t size);
 
     /**
-     * @brief         读取size长度的数据
+     * @brief         从 m_cur 中读取 size 长度的数据 const
      * @param[in,out] buff 内存缓存指针
      * @param[in]     size 数据大小
      * @param[in]     position 读取开始位置
@@ -447,7 +447,7 @@ class ByteArray {
 
     /**
      * @brief 转换成字符串
-     * @post  将 ByteArray 中数据[m_position, m_size)转成std::string
+     * @post  将 ByteArray 中数据 [m_position, m_size) 转成 std::string
      */
     std::string toString() const;
 
@@ -479,7 +479,7 @@ class ByteArray {
                             uint64_t position) const;
 
     /**
-     * @brief     获取可写入的缓存, 保存成数组
+     * @brief     获取创建出的可写缓存空间
      * @post      若(m_position + len) > m_capacity 则 m_capacity扩容N个节点
      * @param[in] buffers 保存可写入的内存的 iovec 数组
      * @param[in] len 写入的长度
@@ -505,13 +505,13 @@ class ByteArray {
 
   private:
     size_t m_baseSize; /**< 每个 Node 的默认大小 */
-    size_t m_position; /**< 当前全局写入位置 */
-    size_t m_capacity; /** 当前分配的总容量(可以写入的最大数据量) */
-    size_t m_size;     /** 当前已写入的字节总数 */
+    size_t m_position; /**< 当前操作位置 */
+    size_t m_capacity; /**< 当前分配的总容量(可以写入的最大数据量) */
+    size_t m_size;     /**< 当前数据的大小 */
     size_t m_endian;   /**< 字节序, 默认大端 */
 
-    Node *m_root; /** 根节点指针, 非实际节点数据 */
-    Node *m_cur;  /** 当前操作的节点地址 */
+    Node *m_root; /**< 第一个内存块指针 */
+    Node *m_cur;  /**< 当前操作的内存块指针 */
 };
 }; // namespace sylar
 

@@ -76,7 +76,7 @@ class ConfigVarBase {
     virtual std::string toString() = 0;
 
     /**
-     * @brief 将字符串作为初始化参数
+     * @brief 将字符串作为新的配置内容
      */
     virtual bool fromString(const std::string &val) = 0;
 
@@ -85,26 +85,26 @@ class ConfigVarBase {
     std::string m_description; /**< 配置参数的描述 */
 };
 
-/**
- * @class           模版转换类
- * @brief           模板转换, 通过lexical_cast 直接将输入类型转换
- * @params[in. out] F 源类型
- * @params[in. out] T 目标类型
+/*
+ * class           模版转换类
+ * brief           模板转换, 通过lexical_cast 直接将输入类型转换
+ * params[in. out] F 源类型
+ * params[in. out] T 目标类型
  */
 template <class F, class T>
 class LexicalCast {
   public:
-    /**
-     * @brief     类型转换
-     * @param[in] v 源类型值
-     * @return    返回转换后的目标类型值
+    /*
+     * brief     类型转换
+     * param[in] v 源类型值
+     * return    返回转换后的目标类型值
      */
     T operator()(const F &v) { return boost::lexical_cast<T>(v); }
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成 std::vector<T>)
- * @brief string2vector
+/*
+ * class 类型转换模板类片特化(YAML String 转换成 std::vector<T>)
+ * brief string2vector
  */
 template <class T>
 class LexicalCast<std::string, std::vector<T>> {
@@ -126,9 +126,9 @@ class LexicalCast<std::string, std::vector<T>> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(std::vector<T> 转换成 YAML String)
- * @brief vector2string
+/*
+ * class 类型转换模板类片特化(std::vector<T> 转换成 YAML String)
+ * brief vector2string
  */
 template <class T>
 class LexicalCast<std::vector<T>, std::string> {
@@ -148,9 +148,9 @@ class LexicalCast<std::vector<T>, std::string> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成 std::list<T>)
- * @brief string2list
+/*
+ * class 类型转换模板类片特化(YAML String 转换成 std::list<T>)
+ * brief string2list
  */
 template <class T>
 class LexicalCast<std::string, std::list<T>> {
@@ -169,9 +169,9 @@ class LexicalCast<std::string, std::list<T>> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(std::list<T> 转换成 YAML String)
- * @brief list2string
+/*
+ * class 类型转换模板类片特化(std::list<T> 转换成 YAML String)
+ * brief list2string
  */
 template <class T>
 class LexicalCast<std::list<T>, std::string> {
@@ -189,9 +189,9 @@ class LexicalCast<std::list<T>, std::string> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成 std::set<T>)
- * @brief string2set
+/*
+ * class 类型转换模板类片特化(YAML String 转换成 std::set<T>)
+ * brief string2set
  */
 template <class T>
 class LexicalCast<std::string, std::set<T>> {
@@ -212,9 +212,9 @@ class LexicalCast<std::string, std::set<T>> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(std::set<T> 转换成 YAML String)
- * @brief set2string
+/*
+ * class 类型转换模板类片特化(std::set<T> 转换成 YAML String)
+ * brief set2string
  */
 template <class T>
 class LexicalCast<std::set<T>, std::string> {
@@ -233,9 +233,9 @@ class LexicalCast<std::set<T>, std::string> {
     };
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成 std::unordered_set<T>)
- * @brief string2unordered_set
+/*
+ * class 类型转换模板类片特化(YAML String 转换成 std::unordered_set<T>)
+ * brief string2unordered_set
  */
 template <class T>
 class LexicalCast<std::string, std::unordered_set<T>> {
@@ -255,9 +255,9 @@ class LexicalCast<std::string, std::unordered_set<T>> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(std::unordered_set<T> 转换成 YAML String)
- * @brief unordered_set2string
+/*
+ * class 类型转换模板类片特化(std::unordered_set<T> 转换成 YAML String)
+ * brief unordered_set2string
  */
 template <class T>
 class LexicalCast<std::unordered_set<T>, std::string> {
@@ -274,9 +274,9 @@ class LexicalCast<std::unordered_set<T>, std::string> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成 std::map<std::string, T>)
- * @brief string2map
+/*
+ * class 类型转换模板类片特化(YAML String 转换成 std::map<std::string, T>)
+ * brief string2map
  */
 template <class T>
 class LexicalCast<std::string, std::map<std::string, T>> {
@@ -298,9 +298,9 @@ class LexicalCast<std::string, std::map<std::string, T>> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(std::map<std::string, T> 转换成 YAML String)
- * @brief map2string
+/*
+ * class 类型转换模板类片特化(std::map<std::string, T> 转换成 YAML String)
+ * brief map2string
  */
 template <class T>
 class LexicalCast<std::map<std::string, T>, std::string> {
@@ -317,10 +317,10 @@ class LexicalCast<std::map<std::string, T>, std::string> {
     }
 };
 
-/**
- * @class 类型转换模板类片特化(YAML String 转换成
+/*
+ * class 类型转换模板类片特化(YAML String 转换成
  * std::unordered_map<std::string, T>)
- * @brief string2unordered_map
+ * brief string2unordered_map
  */
 template <class T>
 class LexicalCast<std::string, std::unordered_map<std::string, T>> {
@@ -340,10 +340,10 @@ class LexicalCast<std::string, std::unordered_map<std::string, T>> {
         return vec;
     }
 };
-/**
- * @class 类型转换模板类片特化(std::unordered_map<std::string, T> 转换成 YAML
+/*
+ * class 类型转换模板类片特化(std::unordered_map<std::string, T> 转换成 YAML
  * String)
- * @brief unordered_map2string
+ * brief unordered_map2string
  */
 template <class T>
 class LexicalCast<std::unordered_map<std::string, T>, std::string> {
@@ -378,9 +378,9 @@ class ConfigVar : public ConfigVarBase {
         : ConfigVarBase(name, description), m_val(default_value)
     {}
 
-    /**
-     * @brief  将内容转换成 string 类型
-     * @return 出错时, 返回"", 否则返还成功转换成的string
+    /*
+     * brief  将内容转换成 string 类型
+     * return 出错时, 返回"", 否则返还成功转换成的string
      */
     std::string toString() override
     {
@@ -397,10 +397,10 @@ class ConfigVar : public ConfigVarBase {
         return "";
     }
 
-    /**
-     * @brief     将传入的string类型 转换成当前类的所属类型, 即赋值操作
-     * @param[in] val 传入的待转化的数据
-     * @return    出错时, 返回false, 否则返回 true
+    /*
+     * brief     将传入的string类型 转换成当前类的所属类型, 即赋值操作
+     * param[in] val 传入的待转化的数据
+     * return    出错时, 返回false, 否则返回 true
      */
     bool fromString(const std::string &val) override
     {
@@ -415,7 +415,7 @@ class ConfigVar : public ConfigVarBase {
         return false;
     }
 
-    const T getValue()
+    const T& getValue()
     {
         RWMutex::ReadLock lock(m_mutex);
         return m_val;
@@ -429,7 +429,7 @@ class ConfigVar : public ConfigVarBase {
                 return;
             }
             for (auto &i : m_cbs)
-            { // 在设置变量的时候, 进行函数的回调, 提示属性修改
+            { // 在设置变量的时候, 进行函数的回调, 提示属性修改. 观察者
                 i.second(m_val, v);
             }
         }
@@ -497,6 +497,7 @@ class Config {
         // 对重复出现的键值进行额外处理
         RWMutexType::WriteLock lock(GetMutex());
         auto it = GetDatas().find(name);
+        // 在找到对应的字符串描述时, 进行转换, 转换成功的就是正常, 否则就失败
         if (it != GetDatas().end()) {
             auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
             // 向子类转换
@@ -516,7 +517,8 @@ class Config {
             }
         }
 
-        // 这里尝试使用正则来进行检测
+        // 没找到的话, 就该创建了
+        // 这里尝试使用正则来对非法配置进行检测
         boost::regex error_pat("[^a-zA-Z0-9._]");
         // if
         // (name.find_first_not_of("abcdefghijklmnopqrstuvwxyz._0123454678")
@@ -552,9 +554,25 @@ class Config {
         // 使用这个, 效率好一点, 编译期进行类型转换
     }
 
+    /**
+    * @brief     从yaml文件中加载配置
+    * @details   Description
+    * @param[in] root Description
+    */
     static void LoadFromYaml(const YAML::Node &root);
+
+    /**
+    * @brief     从底层的存储结构中查找指定字符串
+    * @param[in] name 待查找的字符串
+    * @return    nullptr or ConfigVarBase
+    */
     static ConfigVarBase::ptr LookupBase(const std::string &name);
 
+    /**
+    * @brief     从底层的存储结构中查找指定字符串
+    * @param[in] name 待查找的字符串
+    * @return    nullptr or ConfigVarBase
+    */
     static void Visit(std::function<void(ConfigVarBase::ptr)> cb);
 
   private:

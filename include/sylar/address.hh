@@ -207,16 +207,16 @@ public:
 	using ptr = std::shared_ptr<IPv4Address>;
 
    /**
-    * @brief     使用点分十进制地址创建 IPv4Address
-	* @param[in] address 点分十进制地址，如 192.168l.1.1
-	* @param[in] port 端口号
-	* @return    成功返回 IPv4Address, 失败返回 nullptrr
+    * @brief     使用点分十进制的字符串创建 IPv4Address
+	  * @param[in] address 点分十进制地址, 如 192.168l.1.1
+	  * @param[in] port 端口号
+	  * @return    成功返回 IPv4Address, 失败返回 nullptrr
     */
 	static IPv4Address::ptr Create(const char* address, uint16_t port = 0);
 
    /**
     * @brief     通过 sockaddr_in 构造 IPv4Address
-	* @param[in] address sockaddr_in 结构体
+		* @param[in] address sockaddr_in 结构体
     */
 	IPv4Address(const sockaddr_in & address);
 
@@ -233,8 +233,26 @@ public:
 	socklen_t getAddrLen() const override;
 	std::ostream& insert(std::ostream& os) const override;
 
+   /**
+    * @brief     获取当前网段的广播地址
+    * @param[in] 网络位前缀长度
+		* @return    返回 IPv4Address 对象, 地址为 网络地址 + 主机位全 1
+    */
 	IPAddress::ptr broadcastAddress(uint32_t prefix_len) override;
+
+   /**
+    * @brief     获取当前 IP 对应的主机网络地址
+    * @param[in] 网络位前缀长度
+		* @return    返回 IPv4Address 对象, 地址为 网络位清零 + 保留主机位
+    *
+    */
 	IPAddress::ptr networkAddress(uint32_t prefix_len) override;
+
+   /**
+    * @brief     获取 子网掩码地址(标准意义上的网络掩码)
+    * @param[in] 网络位前缀长度
+		* @return    返回 IPv4Address 对象, 地址为 网络位全 1 + 主机位全 0
+    */
 	IPAddress::ptr subnetMask(uint32_t perfix_len) override;
 
 	uint32_t getPort() const override;
@@ -317,7 +335,7 @@ public:
 
 	private:
 	sockaddr_un m_addr;
-	socklen_t m_length;
+	socklen_t m_length; /**< unix 地址结构的总大小 */
 
 };
 

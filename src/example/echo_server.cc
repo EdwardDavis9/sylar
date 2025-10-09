@@ -1,3 +1,4 @@
+
 #include "sylar/log.hh"
 #include "sylar/iomanager.hh"
 #include "sylar/bytearray.hh"
@@ -20,6 +21,7 @@ EchoServer::EchoServer(int type)
 	: m_type(type)
 {}
 
+// 重写 client 函数用于处理连接
 void EchoServer::handleClient(sylar::Socket::ptr client) {
 	SYLAR_LOG_INFO(g_logger) << "handleClient " << *client;
 	sylar::ByteArray::ptr ba(new sylar::ByteArray);
@@ -29,7 +31,7 @@ void EchoServer::handleClient(sylar::Socket::ptr client) {
 		ba->getWriteBuffers(iovs, 1024);
 
 		int rt = client->recv(&iovs[0], iovs.size());
-		if ( rt == 0) {
+		if (rt == 0) {
 			SYLAR_LOG_INFO(g_logger) << "client close: " << *client;
 			break;
 			// SYLAR_LOG_INFO(g_logger) << "wait client data" << *client;
@@ -39,14 +41,17 @@ void EchoServer::handleClient(sylar::Socket::ptr client) {
 				<< " errno=" << errno << " errstr=" << strerror(errno);
 			break;
 		}
+
 		ba->setPosition(ba->getPosition() + rt);
 		ba->setPosition(0);
 
 		// SYLAR_LOG_INFO(g_logger) << "recv rt=" << rt << " data="
-		// 	<< std::string((char*)iovs[0].iov_base, rt);
+		// 										 << std::string((char*)iovs[0].iov_base, rt);
 
 		if(m_type == 1) {
-			std::cout << ba->toString();
+			// std::cout << ba->toString();
+				SYLAR_LOG_INFO(g_logger) << "recv rt=" << rt << " data="
+														 << ba->toString();
 		}
 		else {
 			std::cout << ba->toHexString();

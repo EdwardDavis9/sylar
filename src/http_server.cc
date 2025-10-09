@@ -21,9 +21,9 @@ void HttpServer::handleClient(Socket::ptr client)
 	do {
 		auto req = session->recvRequest();
 		if(!req) {
-			SYLAR_LOG_WARN(g_logger) << "recv http request fail,"
+			SYLAR_LOG_DEBUG(g_logger) << "recv http request fail,"
 				" errno=" << errno << " errstr=" << strerror(errno)
-				<< " client:" << *client;
+				<< " client:" << *client << " keep-alive=" << m_isKeepAlive;
 			break;
 		}
 
@@ -34,14 +34,11 @@ void HttpServer::handleClient(Socket::ptr client)
 		rsp->setHeader("Server", getName());
 		m_dispatcher->handle(req, rsp, session);
 
-		// rsp->setBody("hello sylar");
-
-       // SYLAR_LOG_INFO(g_logger) << "requst:" << std::endl
-       //     << *req;
-       // SYLAR_LOG_INFO(g_logger) << "response:" << std::endl
-       //     << *rsp;
-
 		session->sendResponse(rsp);
+
+		if(!m_isKeepAlive || req->isClose()) {
+				break;
+		}
 	} while(m_isKeepAlive);
 	session->close();
 }

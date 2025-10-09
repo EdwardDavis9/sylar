@@ -10,7 +10,6 @@ void test()
 
     SYLAR_LOG_INFO(g_logger) << "begin";
     bool v = sylar::Address::Lookup(addrs, "www.baidu.com");
-    SYLAR_LOG_INFO(g_logger) << "end";
 
     if (!v) {
         SYLAR_LOG_ERROR(g_logger) << "lookup fail";
@@ -19,6 +18,7 @@ void test()
     for (size_t i = 0; i < addrs.size(); ++i) {
         SYLAR_LOG_INFO(g_logger) << i << " - " << addrs[i]->toString();
     }
+    SYLAR_LOG_INFO(g_logger) << "end";
 }
 
 void test_iface()
@@ -41,8 +41,9 @@ void test_iface()
 }
 
 void test_ipv4() {
+	auto addr = sylar::IPAddress::Create("www.bilibili.com");
 	// auto addr = sylar::IPAddress::Create("www.sylar.top");
-	auto addr = sylar::IPAddress::Create("127.0.0.8");
+	// auto addr = sylar::IPAddress::Create("127.0.0.8");
 
 	if(addr) {
 		SYLAR_LOG_INFO(g_logger) << addr->toString();
@@ -52,8 +53,8 @@ int main(int argc, char *argv[])
 {
 
     // test();
-	// test_iface();
-	test_ipv4();
+		// test_iface();
+		test_ipv4();
 
     return 0;
 }

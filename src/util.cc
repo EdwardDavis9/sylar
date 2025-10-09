@@ -49,7 +49,9 @@ uint64_t GetCurrentMS() {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
 
-	// 秒 -> 毫秒 -> 微秒
+	// 秒 -> 毫秒 <- 微秒
+	// 将秒变成毫秒
+	// 微秒变成毫秒
 	return tv.tv_sec *  1000ul + tv.tv_usec / 1000;
 }
 

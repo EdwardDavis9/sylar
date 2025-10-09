@@ -123,6 +123,7 @@ bool TimerManager::detectClockRollover(uint64_t now_ms)
 {
     bool rollover = false;
     if (now_ms < m_previousTime && now_ms < (m_previousTime - 60 * 60 * 1000)) {
+        // 60 分钟, 60 秒, 1000 毫秒, 1小时
         rollover = true;
     }
 
@@ -135,7 +136,8 @@ TimerManager::TimerManager() { m_previousTime = sylar::GetCurrentMS(); }
 TimerManager::~TimerManager() {}
 
 auto TimerManager::addTimer(uint64_t ms, std::function<void()> cb,
-                            bool recurring) -> Timer::ptr
+                            bool recurring)
+    -> Timer::ptr
 {
     Timer::ptr timer(new Timer(ms, cb, recurring, this));
     RWMutexType::WriteLock lock(m_mutex);
@@ -157,7 +159,10 @@ Timer::ptr TimerManager::addConditionTimer(uint64_t ms,
                                            std::weak_ptr<void> weak_cond,
                                            bool recurring)
 {
-    return addTimer(ms, std::bind(&OnTimer, weak_cond, cb), recurring);
+    // return addTimer(ms, std::bind(&OnTimer, weak_cond, cb), recurring);
+    return addTimer(ms, [=](){
+        OnTimer(weak_cond, cb);
+    }, recurring);
 }
 
 uint64_t TimerManager::getNextTimer()
@@ -194,7 +199,11 @@ auto TimerManager::listExpiredCb(std::vector<std::function<void()>> &cbs)
 
     RWMutexType::WriteLock lock(m_mutex);
 
-    // 检测时间是否错误，以及首个定时器是否过期
+    if(m_timers.empty()) {
+        return;
+    }
+
+    // 检测时间是否错误, 以及首个定时器是否过期
     bool rollover = detectClockRollover(now_ms);
     if (!rollover && (*m_timers.begin())->m_next > now_ms) {
         return;
@@ -202,7 +211,7 @@ auto TimerManager::listExpiredCb(std::vector<std::function<void()>> &cbs)
 
     Timer::ptr now_timer(new Timer(now_ms));
 
-    // 通过 lower_bound 获取一个大于等于当前时间的定时器，这是还未到期的定时器
+    // 通过 lower_bound 获取一个大于等于当前时间的定时器, 这是还未到期的定时器
     // 而 [begin, it) 范围内的定时器表示到期了
     auto it = rollover ? m_timers.end() : m_timers.lower_bound(now_timer);
 

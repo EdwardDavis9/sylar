@@ -1,4 +1,9 @@
-// #include "http/uri.hh"
+#include "http/uri.hh"
+#include <iostream>
+#include <sstream>
+
+namespace sylar {
+namespace http {
 
 %%{
     # See RFC 3986: http://www.ietf.org/rfc/rfc3986.txt
@@ -13,32 +18,49 @@
 
     action marku { mark = fpc; }
     action markh { mark = fpc; }
+
+    # fpc 是末尾的位置, mark 是当前处理时记录的位置
     action save_scheme
     {
-        m_uri->scheme(unescape(std::string(mark, fpc - mark)));
+        uri->setScheme(std::string(mark, fpc - mark));
         mark = NULL;
     }
 
     scheme = (alpha (alpha | digit | "+" | "-" | ".")*) >marku %save_scheme;
 
+        # if (fpc == mark)
+        #     m_authority->port(-1);
+        # else
+        #     m_authority->port(atoi(mark));
+        # mark = NULL;
     action save_port
     {
-        if (fpc == mark)
-            m_authority->port(-1);
-        else
-            m_authority->port(atoi(mark));
+
+        if(fpc != mark) {
+            uri->setPort(atoi(mark));
+        }
         mark = NULL;
     }
+
+        # m_authority->userinfo(unescape(std::string(mark, fpc - mark)));
+        # mark = NULL;
     action save_userinfo
     {
-        m_authority->userinfo(unescape(std::string(mark, fpc - mark)));
+
+        if(mark) {
+            // std::cout << std::string(mark, fpc - mark) << std::endl;
+            uri->setUserInfo(std::string(mark, fpc - mark));
+        }
         mark = NULL;
     }
+
+            # m_authority->host(unescape(std::string(mark, fpc - mark)));
+            # mark = NULL;
     action save_host
     {
         if (mark != NULL) {
-            m_authority->host(unescape(std::string(mark, fpc - mark)));
-            mark = NULL;
+            // std::cout << std::string(mark, fpc - mark) << std::endl;
+            uri->setHost(std::string(mark, fpc-mark));
         }
     }
 
@@ -66,45 +88,73 @@
 
     action save_segment
     {
-        m_segments->push_back(unescape(std::string(mark, fpc - mark)));
+        // std::cout << std::string(mark, fpc - mark) << std::endl;
+        # m_segments->push_back(unescape(std::string(mark, fpc - mark)));
         mark = NULL;
     }
 
-    pchar = unreserved | pct_encoded | sub_delims | ":" | "@";
-    segment = pchar* >marku %save_segment;
-    segment_nz = pchar+ >marku %save_segment;
-    segment_nz_nc = (pchar - ":")+ >marku %save_segment;
-
-    action clear_segments
+    action save_path
     {
-        m_segments->clear();
+        // std::cout << std::string(mark, fpc - mark) << std::endl;
+        uri->setPath(std::string(mark, fpc-mark));
+        mark = NULL;
     }
 
-    path_abempty = (("/" >marku >save_segment segment) %marku %save_segment)? ("/" segment)*;
-    path_absolute = ("/" >marku >save_segment (segment_nz ("/" segment)*)?) %marku %save_segment;
+    # pchar = unreserved | pct_encoded | sub_delims | ":" | "@";
+    # segment = pchar* >marku %save_segment;
+    # segment_nz = pchar+ >marku %save_segment;
+    # segment_nz_nc = (pchar - ":")+ >marku %save_segment;
+
+    # add chinese support
+    pchar = (( any -- ascii) | unreserved | pct_encoded | sub_delims | ":" | "@");
+    segment = pchar*;
+    segment_nz = pchar+;
+    segment_nz_nc = (pchar - ":")+;
+
+        # m_segments->clear();
+    action clear_segments
+    {
+    }
+
+    # path_abempty = (("/" >marku >save_segment segment) %marku %save_segment)? ("/" segment)*;
+    # path_absolute = ("/" >marku >save_segment (segment_nz ("/" segment)*)?) %marku %save_segment;
+    # path_noscheme = segment_nz_nc ("/" segment)*;
+    # path_rootless = segment_nz ("/" segment)*;
+    # path_empty = "";
+    # path = (path_abempty | path_absolute | path_noscheme | path_rootless | path_empty);
+
+    path_abempty = (("/" segment))? ("/" segment)*;
+    path_absolute = ("/" (segment_nz ("/" segment)*)?);
     path_noscheme = segment_nz_nc ("/" segment)*;
     path_rootless = segment_nz ("/" segment)*;
     path_empty = "";
     path = (path_abempty | path_absolute | path_noscheme | path_rootless | path_empty);
 
+        # m_uri->m_query = std::string(mark, fpc - mark);
+        # m_uri->m_queryDefined = true;
+        # mark = NULL;
     action save_query
     {
-        m_uri->m_query = std::string(mark, fpc - mark);
-        m_uri->m_queryDefined = true;
+        // std::cout << std::string(mark, fpc - mark) << std::endl;
+        uri->setQuery(std::string(mark, fpc - mark));
         mark = NULL;
     }
+
+        # m_uri->fragment(unescape(std::string(mark, fpc - mark)));
+        # mark = NULL;
     action save_fragment
     {
-        m_uri->fragment(unescape(std::string(mark, fpc - mark)));
+        // std::cout << std::string(mark, fpc - mark) << std::endl;
+        uri->setFragment(std::string(mark, fpc - mark));
         mark = NULL;
     }
 
     query = (pchar | "/" | "?")* >marku %save_query;
     fragment = (pchar | "/" | "?")* >marku %save_fragment;
 
-    hier_part = ("//" %clear_segments authority path_abempty) | path_absolute | path_rootless | path_empty;
+    hier_part = ("//" authority path_abempty > markh %save_path) | path_absolute | path_rootless | path_empty;
 
-    relative_part = ("//" %clear_segments authority path_abempty) | path_absolute | path_noscheme | path_empty;
+    relative_part = ("//" authority path_abempty) | path_absolute | path_noscheme | path_empty;
     relative_ref = relative_part ( "?" query )? ( "#" fragment )?;
 
     absolute_URI = scheme ":" hier_part ( "?" query )? ;
@@ -115,10 +165,103 @@
     URI_reference = URI | relative_ref;
 
     main := URI_reference;
+    write data;
 }%%
 
-        // machine uri_parser_proper;
-        // include uri_parser;
-%%{
-        write data;
-}%%
+//         // machine uri_parser_proper;
+//         // include uri_parser;
+// %%{
+//         write data;
+// }%%
+
+
+Uri::ptr Uri::Create(const std::string &uri_str)
+{
+    Uri::ptr uri(new Uri);
+    int cs = 0;
+    const char* mark = 0;
+
+    %% write init;
+    const char *p = uri_str.c_str();
+    const char* pe = p + uri_str.size();
+    const char* eof = pe;
+    %% write exec;
+    if(cs == uri_parser_error) {
+        return nullptr;
+    } else if(cs >= uri_parser_first_final) {
+        return uri;
+    }
+
+    return nullptr;
+}
+
+Uri::Uri()
+    :m_port(0)
+{}
+
+// 默认的端口，80, 443
+bool Uri::isDefaultPort() const
+{
+    if(m_port == 0) {
+        return true;
+    }
+    if(m_scheme == "http") {
+        return m_port == 80;
+    } else if (m_scheme == "https") {
+        return m_port == 443;
+    }
+    return false;
+}
+
+const std::string& Uri::getPath() const
+{
+    static std::string s_default_path = "/";
+    return m_path.empty() ? s_default_path : m_path;
+}
+
+int32_t Uri::getPort() const {
+    if(m_port) {
+        return m_port;
+    }
+    if(m_scheme == "http") {
+            return 80;
+    }else if(m_scheme == "https") {
+            return 443;
+    }
+    return m_port;
+}
+
+std::ostream &Uri::dump(std::ostream &os) const
+{
+    os << m_scheme << "://"
+       << m_userInfo
+       << (m_userInfo.empty()  ? "" : "@")
+       << m_host
+       << (isDefaultPort() ? "" : ":" + std::to_string(m_port))
+       << getPath()
+       << (m_query.empty() ? "" : "?")
+       << m_query
+       << (m_fragment.empty() ? "" : "#")
+       << m_fragment;
+    return os;
+}
+
+std::string Uri::toString() const
+{
+    std::stringstream ss;
+    dump(ss);
+    return ss.str();
+}
+
+Address::ptr Uri::createAddress() const
+{
+    auto addr = Address::LookupAnyIPAddress(m_host);
+    if(addr) {
+        addr->setPort(getPort());
+    }
+    return addr;
+}
+
+}
+
+}

@@ -8,7 +8,8 @@ namespace sylar {
 
 FdCtx::FdCtx(int fd)
     : m_isInit(false), m_isSocket(false), m_sysNonblock(false),
-      m_userNonblock(false), m_fd(fd), m_recvTimeout(-1), m_sendTimeout(-1)
+      m_userNonblock(false),m_isClosed(false), m_fd(fd),
+      m_recvTimeout(-1), m_sendTimeout(-1)
 {
     init();
 }
@@ -78,6 +79,10 @@ FdManager::FdManager() { m_datas.resize(64); }
 
 auto FdManager::get(int fd, bool auto_create) -> FdCtx::ptr
 {
+    if(fd == -1) {
+        return nullptr;
+    }
+
     RWMutexType::ReadLock lock(m_mutex);
     if ((int)m_datas.size() <= fd) {
         if (auto_create == false) {
@@ -85,15 +90,21 @@ auto FdManager::get(int fd, bool auto_create) -> FdCtx::ptr
         }
     }
     else {
+        // 只要 fd 在范围内
         if (m_datas[fd] || !auto_create) {
+            // 不论是否存在, 都会进行返回
             return m_datas[fd];
         }
     }
 
     lock.unlock();
 
+    // 没有对象且允许自动创建的话
     RWMutexType::WriteLock lock2(m_mutex);
     FdCtx::ptr ctx(new FdCtx(fd));
+    if(fd >= (int)m_datas.size()) {
+        m_datas.resize(fd*1.5);
+    }
     m_datas[fd] = ctx;
     return ctx;
 }

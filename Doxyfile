@@ -42,7 +42,7 @@ DOXYFILE_ENCODING      = UTF-8
 # title of most generated pages and in a few other places.
 # The default value is: My Project.
 
-PROJECT_NAME           = "My Project"
+PROJECT_NAME           = "Sylar Network Toolkit"
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. This
 # could be handy for archiving the generated documentation or if some version
@@ -74,7 +74,7 @@ PROJECT_ICON           =
 # entered, it will be relative to the location where Doxygen was started. If
 # left blank the current directory will be used.
 
-OUTPUT_DIRECTORY       = $(HOME)/Documents/cc/sylar/
+OUTPUT_DIRECTORY       = $(HOME)/Documents/aa_Doxygen/cc/sylar/
 
 # If the CREATE_SUBDIRS tag is set to YES then Doxygen will create up to 4096
 # sub-directories (in 2 levels) under the output directory of each output format
@@ -1461,7 +1461,7 @@ HTML_STYLESHEET        =
 
 # HTML_EXTRA_STYLESHEET  =
 
-HTML_EXTRA_STYLESHEET  = $(HOME)/Documents/cc/aaa-doxygen/doxygen-awesome-css-main/doxygen-awesome.css
+HTML_EXTRA_STYLESHEET  = $(HOME)/Documents/aa_Doxygen/aaa-doxygen/doxygen-awesome-css-main/doxygen-awesome.css
                         # ./.asset/doxygen/doxygen-awesome-css-main/doxygen-awesome-sidebar-only.css
 
 # The HTML_EXTRA_FILES tag can be used to specify one or more extra images or

@@ -4,8 +4,10 @@
 
 namespace sylar {
 
+static std::atomic<uint64_t> s_thread_count{0};
+
 static thread_local Thread *t_thread          = nullptr;
-static thread_local std::string t_thread_name = "UNKNOWN";
+static thread_local std::string t_thread_name = "Thread_1";
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
@@ -34,9 +36,11 @@ auto Semaphore::notify() -> void {
 
 Thread *Thread::GetThis() { return t_thread; }
 
-const std::string &Thread::GetName() { return t_thread_name; }
+const std::string &Thread::GetName() {
+    return t_thread_name;
+}
 
-auto Thread::SetName(const std::string &name) -> void
+void Thread::SetName(const std::string &name)
 {
     if (t_thread) {
         t_thread->m_name = name;
@@ -57,7 +61,7 @@ Thread::Thread(std::function<void()> cb, const std::string &name)
 			<< name;
         throw std::logic_error("pthread_create error");
     }
-    m_semaphore.wait();
+    m_semaphore.wait(); // 等待线程运行 run 来初始化自身资源, 例如 name, ptr...
 }
 
 Thread::~Thread()
@@ -65,6 +69,7 @@ Thread::~Thread()
     if (m_thread) {
         // 分离线程
         pthread_detach(m_thread);
+        s_thread_count--;
     }
 }
 
@@ -85,18 +90,18 @@ void *Thread::run(void *arg)
 {
     Thread *thread = static_cast<Thread *>(arg);
     t_thread       = thread;
-    t_thread_name  = thread->m_name;
+    t_thread_name  = thread->m_name + std::to_string(++s_thread_count);
 
     thread->m_id = sylar::GetThreadId();
 
     // 设置线程的名字
     pthread_setname_np(pthread_self(), thread->m_name.substr(0, 15).c_str());
 
-    // 清空原有函数指针，并且进行自动清理资源
+    // 清空原有函数指针, 并且进行自动清理资源
     std::function<void()> cb;
     cb.swap(thread->m_cb);
 
-    thread->m_semaphore.notify();
+    thread->m_semaphore.notify(); // 通知父线程, 可以继续执行了
 
     cb();
     return 0;

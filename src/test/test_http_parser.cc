@@ -32,6 +32,8 @@ void test_request() {
 		<< parser.isFinished() << " total=" << tmp.size()
 		<<" conten_legth=" <<parser.getContentLength();
 	tmp.resize(tmp.size() - s);
+
+	SYLAR_LOG_INFO(g_logger) << test_request_data;
 	SYLAR_LOG_INFO(g_logger) << parser.getData()->toString();
 	SYLAR_LOG_INFO(g_logger) << tmp;
 }
@@ -39,7 +41,7 @@ void test_request() {
 void test_response() {
 	sylar::http::HttpResponseParser parser;
 	std::string tmp = test_response_data;
-	size_t s = parser.execute(&tmp[0], tmp.size());
+	size_t s = parser.execute(&tmp[0], tmp.size(), true);
 
 	--s;
 
@@ -58,5 +60,5 @@ int main(int argc, char *argv[]) {
 	test_request();
 
 	test_response();
-    return 0;
+	return 0;
 }

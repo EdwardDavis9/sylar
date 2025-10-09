@@ -28,7 +28,7 @@ friend class Scheduler;
     Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
 	~Fiber();
 
-	// 初始化协程相关内容
+	// 重置协程相关内容
 	void reset(std::function<void()> cb);
 
     // 从当前的主协程调用子协程
@@ -37,14 +37,24 @@ friend class Scheduler;
 	// 从子协程切回当前的主协程
 	void back();
 
+  /**
+   * @brief  获得 Fiber 对象的ID
+   */
 	uint64_t getId() { return m_id;}
 
+  /**
+   * @brief 返回协程状态
+   */
 	State getState() { return m_state; }
 
+	/**
+	 * @brief  获得实际中的 fiber id
+	 * @return fiber id
+	 */
 	static uint64_t GetFiberId();
 
-    //重置协程函数，并重置状态
-    //INIT，TERM
+   //重置协程函数, 并重置状态
+   //INIT, TERM
 
 	/**
 	 * @brief 从记录中的主协程切换到子协程执行
@@ -68,12 +78,12 @@ friend class Scheduler;
 	static Fiber::ptr GetThis();
 
 	/**
-	 * @brief 将协程切换到记录中的主协程执行，并且设置为 READY 状态，即切换到后台
+	 * @brief 将协程切换到记录中的主协程执行, 并且设置为 READY 状态, 即切换到后台
 	 */
 	static void YieldToReady();
 
 	/**
-	 * @brief 将子协程切换到后台，并且设置为 HOLD 状态
+	 * @brief 将协程切换到后台, 并且设置为 HOLD 状态
 	 */
 	static void YieldToHold();
 
@@ -82,24 +92,29 @@ friend class Scheduler;
 	 */
 	static uint64_t TotalFibers();
 
-    /**
-	 * @berif 协程调度
+  /**
+	 * @berif 协程执行函数
+	 * @post  执行完成后, 回到线程主协程
 	 */
 	static void MainFunc();
 
+  /**
+	 * @berif 协程执行函数
+	 * @post  执行完成后, 回到线程调度协程
+	 */
 	static void CallerMainFunc();
 
   private:
     Fiber();
 
-	uint64_t m_id = 0;
-	uint32_t m_stacksize = 0;
-	State m_state = INIT;
+	uint64_t m_id = 0; /**< 协程 ID */
+	uint32_t m_stacksize = 0; /**< 协程运行栈大小 */
+	State m_state = INIT; /**< 协程状态 */
 
-	ucontext_t m_ctx;
-	void * m_stack = nullptr;
+	ucontext_t m_ctx; /**< 协程上下文 */
+	void * m_stack = nullptr; /**< 协程运行栈指针 */
 
-	std::function<void()> m_cb; // 协程的回调函数
+	std::function<void()> m_cb;  /**< 协程运行函数 */
 };
 
 } // namespace sylar

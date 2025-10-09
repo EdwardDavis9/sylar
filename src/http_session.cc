@@ -14,7 +14,6 @@ HttpRequest::ptr HttpSession::recvRequest()
 {
 	HttpRequestParser::ptr parser(new HttpRequestParser);
 	uint64_t buffer_size = HttpRequestParser::GetHttpRequestBufferSize();
-	// uint64_t buffer_size = 100;
 
 	std::shared_ptr<char> buffer(
 		new char[buffer_size], [](char* ptr) {
@@ -24,6 +23,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 	char* data = buffer.get();
 	int unparsed_offset  = 0;
 	do {
+			// 获取数据
 		int read_size
 			= read(data + unparsed_offset, buffer_size - unparsed_offset);
 		if (read_size <= 0) {
@@ -39,6 +39,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 			return nullptr;
 		}
 
+		// 本轮中读到的数据 - 已经解析的数据，这也就对读到数据的一个偏移
 		unparsed_offset = read_size - nparser;
 		if(unparsed_offset == (int)buffer_size) {
 			// 首次请求解析的数据等于当前的 buffer_size, 那么说明是恶意请求, 数据过大
@@ -47,6 +48,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 		}
 
 		if(parser->isFinished()) {
+		  // 解析完成后, 退出循环
 			break;
 		}
 	} while(true);
@@ -55,7 +57,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 	if(content_size > 0) {
 		std::string body;
 
-		#if 1
+		#if 0
 		body.reserve(content_size);
 		size_t already_use = 0;
 		 if ((int64_t)unparsed_offset > 0) {
@@ -74,13 +76,13 @@ HttpRequest::ptr HttpSession::recvRequest()
             size_t old = body.size();
             body.resize(old + need); // 先扩大 size
             if (readFixSize(&body[old], need) <= 0) {
-				close();
+								close();
                 return nullptr;
             }
         }
 		#endif
 
-		#if 0
+		#if 1
 		body.resize(content_size);
 		int len = 0;
 		if(content_size >= unparsed_offset) {
@@ -89,7 +91,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 		}
 		else {
 			memcpy(&body[0], data, content_size);
-		    // 缓冲区中的未解析数据比 content_size 还大
+		  // 缓冲区中的未解析数据比 content_size 还大
 			// 说明缓冲区里的数据已经能把整个 body 填满, 即还存其他的请求数据
 			// 因此本次请求解析只需要读取 content_size 个数据即可
 			len = content_size;
@@ -97,7 +99,7 @@ HttpRequest::ptr HttpSession::recvRequest()
 		content_size -= unparsed_offset;
 
 		if(content_size > 0) {
-			如果还未读取完毕请求体的话, 接下来读取剩下的请求体
+			// 如果还未读取完毕请求体的话, 接下来读取剩下的请求体
 			if(readFixSize(&body[len], content_size) <= 0) {
 				close();
 				return nullptr;

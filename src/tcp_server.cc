@@ -102,6 +102,7 @@ namespace sylar {
         }
         return true;
     }
+
     void TcpServer::stop() {
         m_isStop = true;
         auto self = shared_from_this();

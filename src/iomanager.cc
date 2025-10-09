@@ -120,11 +120,11 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
         fd_ctx = m_fdContexts[fd];
     }
 
-    // 检查待添加的事件是否已存在，防止重复注册
+    // 检查待添加的事件是否已存在, 防止重复注册
     FdContext::MutexType::Lock lock2(fd_ctx->mutex);
     if (fd_ctx->events & event) {
         SYLAR_LOG_ERROR(g_logger)
-            << "addEvent assert fd = " << fd << " event = " << event
+            << "Exist error: addEvent assert fd = " << fd << " event = " << event
             << " fd_ctx.event =" << fd_ctx->events;
 
         SYLAR_ASSERT(!(fd_ctx->events & event));
@@ -133,7 +133,7 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     // 构造 epoll_event 并注册事件
     int op = fd_ctx->events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
     epoll_event epevent;
-    epevent.events   = EPOLLET | fd_ctx->events | event;
+    epevent.events = EPOLLET | fd_ctx->events | event;
     epevent.data.ptr = fd_ctx;
 
     int rt = epoll_ctl(m_epfd, op, fd, &epevent);
@@ -149,6 +149,8 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     // 更新状态并绑定调度器/协程/回调
     ++m_pendingEventCount;
     fd_ctx->events = static_cast<Event>(fd_ctx->events | event);
+
+    // 获取刚才添加的事件上下文, 然后添加调度器, 协程, 回调函数
     FdContext::EventContext &event_ctx = fd_ctx->getContext(event);
     SYLAR_ASSERT(!event_ctx.scheduler && !event_ctx.fiber && !event_ctx.cb);
 
@@ -158,8 +160,9 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
         event_ctx.cb.swap(cb);
     }
     else {
-        event_ctx.fiber = Fiber::GetThis();
-        SYLAR_ASSERT(event_ctx.fiber->getState() == Fiber::EXEC);
+        event_ctx.fiber = Fiber::GetThis(); // 保存返回点的上下文
+        SYLAR_ASSERT2(event_ctx.fiber->getState() == Fiber::EXEC,
+                      "state=" << event_ctx.fiber->getState());
     }
 
     return 0;
@@ -180,7 +183,7 @@ bool IOManager::delEvent(int fd, Event event)
         return false;
     }
 
-	// 将数据按位取反，然后与原来的 events 做与操作， 即删除原来的事件
+	// 将数据按位取反, 然后与原来的 events 做与操作,  即删除原来的事件
     Event new_events = static_cast<Event>(fd_ctx->events & ~event);
     int op           = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
     epoll_event epevent;
@@ -284,13 +287,13 @@ bool IOManager::cancelAll(int fd)
 
 IOManager *IOManager::GetThis()
 {
-    // return dynamic_cast<IOManager *>(Scheduler::GetThis());
-     Scheduler* sched = Scheduler::GetThis();
-    IOManager* iom = dynamic_cast<IOManager*>(sched);
+    return dynamic_cast<IOManager *>(Scheduler::GetThis());
+    //  Scheduler* sched = Scheduler::GetThis();
+    // IOManager* iom = dynamic_cast<IOManager*>(sched);
     // if (!iom) {
     //     SYLAR_LOG_ERROR(g_logger) << "Current Scheduler is not IOManager!";
     // }
-    return iom;
+    // return iom;
 }
 
 void IOManager::tickle()
@@ -366,6 +369,7 @@ void IOManager::idle()
                 continue;
             }
 
+            // 事件触发时, 携带了指定的上下文类
             FdContext *fd_ctx = static_cast<FdContext *>(event.data.ptr);
             FdContext::MutexType::Lock lock(fd_ctx->mutex);
             if (event.events & (EPOLLERR | EPOLLHUP)) {
@@ -379,7 +383,7 @@ void IOManager::idle()
                 real_events |= WRITE;
             }
 
-			// 只会关心指定的读写IO事件，其余事件一律跳过
+            // 只会关心指定的读写IO事件, 其余事件一律跳过
             if ((fd_ctx->events & real_events) == NONE) {
                 continue;
             }

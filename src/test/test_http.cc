@@ -5,7 +5,8 @@ void test_request() {
 	sylar::http::HttpRequest::ptr req(new sylar::http::HttpRequest);
 	req->setHeader("host", "www.bilibili.com");
 	req->setBody("hello sylar");
-	req->dump(std::cout) << std::endl;
+	// req->dump(std::cout) << std::endl;
+	std::cout << req->toString();
 }
 
 void test_response() {

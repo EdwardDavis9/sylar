@@ -91,7 +91,7 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
         }
     }
 
-    //  非 ipv4 和 ipv6 地址的话
+    //  非 ipv4 和 ipv6 的点分十进制地址的话
     if (node.empty()) {
         node = host;
     }
@@ -111,7 +111,7 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
     if (error) {
         SYLAR_LOG_ERROR(g_logger)
             << "Address::Lookup getaddress(" << host << ", " << family << ", "
-            << type << ") err=" << error << " errstr=" << strerror(errno);
+            << type << ") err=" << error << " errstr=" << gai_strerror(errno);
         return false;
     }
 
@@ -150,7 +150,7 @@ IPAddress::ptr Address::LookupAnyIPAddress(const std::string &host, int family,
     std::vector<Address::ptr> result;
     if (Lookup(result, host, family, type, protocol)) {
         for (auto &i : result) {
-            std::cout << i->toString() << std::endl;
+            // std::cout << i->toString() << std::endl;
             IPAddress::ptr v = std::dynamic_pointer_cast<IPAddress>(i);
             if (v) {
                 return v;
@@ -275,13 +275,13 @@ IPAddress::ptr IPAddress::Create(const char *address, uint16_t port)
     addrinfo hints, *results;
     memset(&hints, 0, sizeof(addrinfo));
 
-    hints.ai_flags  = AI_NUMERICHOST;
+    // hints.ai_flags  = AI_NUMERICHOST;
     hints.ai_family = AF_UNSPEC;
 
     int error = getaddrinfo(address, nullptr, &hints, &results);
     if (error) {
-        SYLAR_LOG_ERROR(g_logger) << "IPAddress::Create(" << address << ", "
-                                  << port << ") errstr=" << strerror(errno);
+        SYLAR_LOG_ERROR(g_logger) << "IPAddress::Create(" << address << ", " << port
+                              << ") errstr=" << gai_strerror(error);
         return nullptr;
     }
 
@@ -305,7 +305,7 @@ IPv4Address::ptr IPv4Address::Create(const char *address, uint16_t port)
 {
 
     IPv4Address::ptr rt(new IPv4Address);
-    rt->m_addr.sin_port = byteswapOnLittleEndian(port); // question
+    rt->m_addr.sin_port = byteswapOnLittleEndian(port);
 
     int result = inet_pton(AF_INET, address, &rt->m_addr.sin_addr);
     if (result <= 0) {
@@ -324,7 +324,7 @@ IPv4Address::IPv4Address(uint32_t address, uint16_t port)
 {
     memset(&m_addr, 0, sizeof(m_addr));
     m_addr.sin_family      = AF_INET;
-    m_addr.sin_addr.s_addr = byteswapOnLittleEndian(address); // question
+    m_addr.sin_addr.s_addr = byteswapOnLittleEndian(address);
     m_addr.sin_port        = byteswapOnLittleEndian(port);
 }
 
@@ -340,8 +340,9 @@ std::ostream &IPv4Address::insert(std::ostream &os) const
     os << ((addr >> 24) & 0xff) << "." /*移除低24位,保留第1字段,然后十进制输出*/
        << ((addr >> 16) & 0xff) << "." /*移除低16位,保留第2字段,然后十进制输出*/
        << ((addr >> 8) & 0xff)  << "." /*移除低8位,保留第3字段,然后十进制输出*/
-       << (addr & 0xff);              /*保留第4字段, 然后十进制输出*/
+       << (addr & 0xff);               /*保留第4字段, 然后十进制输出*/
 
+    // 本来这里的地址是大端地址，需要转换小端地址才可读
     os << ":" << byteswapOnLittleEndian(m_addr.sin_port);
     return os;
 }
@@ -368,7 +369,7 @@ IPAddress::ptr IPv4Address::networkAddress(uint32_t prefix_len)
 
     sockaddr_in baddr(m_addr);
     baddr.sin_addr.s_addr &=
-        byteswapOnLittleEndian(CreateMask<uint32_t>(prefix_len));
+        ~byteswapOnLittleEndian(CreateMask<uint32_t>(prefix_len));
     return IPv4Address::ptr(new IPv4Address(baddr));
 }
 
@@ -442,6 +443,7 @@ std::ostream &IPv6Address::insert(std::ostream &os) const
     bool used_zeros = false;
 
     for (size_t i = 0; i < 8; ++i) {
+        // 第一次遇到 0时
         if (addr[i] == 0 && !used_zeros) {
             continue;
         }
@@ -475,7 +477,10 @@ IPAddress::ptr IPv6Address::broadcastAddress(uint32_t prefix_len)
     // 模拟 ipv6
     sockaddr_in6 baddr(m_addr);
 
-    // 设置某一段的掩码
+    // Ex; prefiox=20, 20/8 = 2,表示从第二段开始跨段了, 20%8=4
+    // 表示, 第2段的前4个字节是网络位的部分
+
+    // 设置跨段地址的掩码
     // 或操作保留的是前面的网络地址
     baddr.sin6_addr.s6_addr[prefix_len / 8] |=
         CreateMask<uint8_t>(prefix_len % 8);
@@ -489,6 +494,9 @@ IPAddress::ptr IPv6Address::broadcastAddress(uint32_t prefix_len)
 IPAddress::ptr IPv6Address::networkAddress(uint32_t prefix_len)
 {
     sockaddr_in6 baddr(m_addr);
+
+    // Ex; prefiox=20, 20/8 = 2,表示从第二段开始跨段了, 20%8=4
+    // 表示, 第2段的前4个字节是网络位的部分
 
     // 通过 & 清除主机位, 因为创建的掩码一定是网络位＋主机位
     baddr.sin6_addr.s6_addr[prefix_len / 8] &=

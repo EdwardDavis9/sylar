@@ -68,6 +68,11 @@ auto ServletDispatcher::addGlobServlet(const std::string& uri,
 		}
 	}
 	m_globs.push_back(std::make_pair(uri, servlet));
+
+  // 加锁解锁带来了不必要的开销
+  // delglobservlet(uri);
+	// rwmutextype::writelock lock(m_mutex);
+	// m_globs.push_back(std::make_pair(uri, servlet));
 }
 
 auto ServletDispatcher::delServlet(const std::string &uri)

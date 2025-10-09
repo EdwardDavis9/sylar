@@ -18,7 +18,7 @@ void test_socket() {
     //    }
     // }
 
-	sylar::IPAddress::ptr addr = sylar::Address::LookupAnyIPAddress("www.baidu.com");
+	sylar::IPAddress::ptr addr = sylar::Address::LookupAnyIPAddress("www.sogou.com");
 	if(addr) {
 		SYLAR_LOG_INFO(g_logger) << "get address: " << addr->toString();
 	} else {

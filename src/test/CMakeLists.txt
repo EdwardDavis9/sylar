@@ -16,10 +16,11 @@ set(
   # ./test_bytearray.cc
   # ./test_http.cc
   # ./test_http_parser.cc
-  # ./test_TCP_server.cc
+  # ./test_tcp_server.cc
   # ./test_http_server.cc
   # ./test_http_servlet.cc
   ./test_http_connection.cc
+  # ./test_uri.cc
 )
 
 add_executable(${PROJECT_NAME} ${MAIN_TEST})
