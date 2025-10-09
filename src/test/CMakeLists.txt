@@ -1,4 +1,4 @@
-project(test_http_connection)
+project(test_http_server)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
@@ -17,9 +17,9 @@ set(
   # ./test_http.cc
   # ./test_http_parser.cc
   # ./test_tcp_server.cc
-  # ./test_http_server.cc
+  ./test_http_server.cc
   # ./test_http_servlet.cc
-  ./test_http_connection.cc
+  # ./test_http_connection.cc
   # ./test_uri.cc
 )
 

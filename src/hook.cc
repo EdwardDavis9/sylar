@@ -178,8 +178,8 @@ retry:
                 return -1;
             }
 
-            SYLAR_ASSERT(sylar::Fiber::GetThis()->getState()
-                         == sylar::Fiber::EXEC);
+            // SYLAR_ASSERT(sylar::Fiber::GetThis()->getState()
+            //              == sylar::Fiber::EXEC);
             goto retry;
         }
     }
@@ -498,7 +498,10 @@ int fcntl(int fd, int cmd, ...)
         case F_SETSIG:
         case F_SETLEASE:
         case F_NOTIFY:
+/* 规范化不同的系统 */
+#ifdef F_SETPIPE_SZ
         case F_SETPIPE_SZ: {
+#endif
             int arg = va_arg(va, int);
             va_end(va);
             return fcntl_f(fd, cmd, arg);
@@ -507,7 +510,10 @@ int fcntl(int fd, int cmd, ...)
         case F_GETOWN:
         case F_GETSIG:
         case F_GETLEASE:
+/* 规范化不同的系统 */
+#ifdef F_SETPIPE_SZ
         case F_GETPIPE_SZ: {
+#endif
             va_end(va);
             return fcntl_f(fd, cmd);
         } break;

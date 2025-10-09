@@ -21,7 +21,8 @@ IOManager::FdContext::getContext(IOManager::Event event)
         case IOManager::WRITE:
             return write;
         default:
-            SYLAR_ASSERT2(false, "getContext");
+            SYLAR_ASSERT2(false, "getContext invalid event: " + std::to_string(static_cast<int>(event)));
+            throw std::invalid_argument("Invalid event type in getContext");
     }
 }
 
@@ -322,6 +323,7 @@ bool IOManager::stopping()
 
 void IOManager::idle()
 {
+    SYLAR_LOG_DEBUG(g_logger) << "idle";
     epoll_event *events = new epoll_event[64]();
     std::shared_ptr<epoll_event> shared_events(
         events, [](epoll_event *ptr) { delete[] ptr; });

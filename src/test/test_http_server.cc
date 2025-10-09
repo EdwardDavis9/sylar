@@ -5,7 +5,7 @@ static sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
 #define to_string(...) #__VA_ARGS__
 
-// sylar::IOManager::ptr woker;
+sylar::IOManager::ptr woker;
 
 void run()
 {
@@ -61,11 +61,9 @@ void run()
 
 int main(int argc, char *argv[])
 {
-    // sylar::IOManager iom(2);
-    sylar::IOManager iom(4);
-    // sylar::IOManager iom(1, true, "main");
+    sylar::IOManager iom(1, true, "main");
 
-    // woker.reset(new sylar::IOManager(3, false, "worker"));
+    woker.reset(new sylar::IOManager(3, false, "worker"));
 
     iom.schedule(run);
 
