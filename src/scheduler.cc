@@ -68,7 +68,7 @@ void Scheduler::start()
 {
     {
         MutexType::Lock lock(m_mutex);
-        if (!m_stopping) {
+        if (!m_stopping) { // 默认是停止状态，因此不会去执行
             return;
         }
         m_stopping = false;
@@ -170,7 +170,7 @@ void Scheduler::run()
         t_scheduler_fiber = Fiber::GetThis().get();
     }
 
-    // 创建了 idle 协程
+    // 创建了 idle 协程对象
     // Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::idle, this)));
     Fiber::ptr idle_fiber(new Fiber([this](){ this->idle();}));
 

@@ -74,7 +74,7 @@ IOManager::IOManager(size_t threads,
 
     contextResize(32); // 设置上下文的大小
 
-    start();
+    start(); // 在这里自动开始进行调度
 }
 
 void IOManager::contextResize(size_t size)

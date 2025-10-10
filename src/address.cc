@@ -82,6 +82,7 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
         service =
             static_cast<const char *>(memchr(host.c_str(), ':', host.size()));
         if (service) {
+            // 没找到第二个 “:” 说明是 ipv4 的地址, 因为 ipv6 有多个 ":"
             if (!(memchr(service + 1, ':',
                          host.c_str() + host.size() - service - 1)))
             {
@@ -187,7 +188,7 @@ bool Address::operator==(const Address &rhs) const
 
 bool Address::operator!=(const Address &rhs) const { return !(*this == rhs); }
 
-bool Address::GetInterfaceAddresses(
+bool Address::GetInterFaceAddresses(
     std::multimap<std::string, std::pair<Address::ptr, uint32_t>> &result,
     int family)
 {
@@ -260,7 +261,7 @@ bool Address::GetInterFaceAddresses(
     }
 
     std::multimap<std::string, std::pair<Address::ptr, uint32_t>> results;
-    if (!GetInterfaceAddresses(results, family)) {
+    if (!GetInterFaceAddresses(results, family)) {
         return false;
     }
     auto its = results.equal_range(iface);
@@ -342,7 +343,7 @@ std::ostream &IPv4Address::insert(std::ostream &os) const
        << ((addr >> 8) & 0xff)  << "." /*移除低8位,保留第3字段,然后十进制输出*/
        << (addr & 0xff);               /*保留第4字段, 然后十进制输出*/
 
-    // 本来这里的地址是大端地址，需要转换小端地址才可读
+    // 本来这里的地址是大端地址, 需要转换小端地址才可读
     os << ":" << byteswapOnLittleEndian(m_addr.sin_port);
     return os;
 }

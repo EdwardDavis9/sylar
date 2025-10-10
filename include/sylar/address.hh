@@ -85,7 +85,7 @@ class Address {
 	* @param[in] family 协议族(AF_INET, AF_INET6, AF_UNIX 等)
 	* @return    成功返回 true, 失败返回 false
 	*/
-    static bool GetInterfaceAddresses(
+    static bool GetInterFaceAddresses(
         std::multimap<std::string, std::pair<Address::ptr, uint32_t>> &result,
         int family = AF_INET);
 

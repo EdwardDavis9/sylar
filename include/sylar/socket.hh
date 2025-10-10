@@ -35,13 +35,13 @@ class Socket : public std::enable_shared_from_this<Socket>, Noncopyable {
     };
 
     /**
-     * @brief 创建 TCP Socket (满足地址类型)
+     * @brief     创建 TCP Socket (满足地址类型)
      * @param[in] address 地址
      */
     static Socket::ptr CreateTCP(sylar::Address::ptr address);
 
     /**
-     * @brief 创建 UDP Socket (满足地址类型)
+     * @brief     创建 UDP Socket (满足地址类型)
      * @param[in] address 地址
      */
     static Socket::ptr CreateUDP(sylar::Address::ptr address);
@@ -77,7 +77,7 @@ class Socket : public std::enable_shared_from_this<Socket>, Noncopyable {
     static Socket::ptr CreateUnixUDPSocket();
 
     /**
-     * @brief     Socket构造函数
+     * @brief     Socket 构造函数
      * @param[in] family 协议簇
      * @param[in] type 类型
      * @param[in] protocol 协议
