@@ -61,6 +61,24 @@ find_package(yaml-cpp REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Threads REQUIRED)
 
+
+# Protobuf
+# find_package(Protobuf REQUIRED)
+# if(Protobuf_FOUND)
+#   include_directories(${Protobuf_INCLUDE_DIRS})
+#   target_include_directories(
+#     ${PROJECT_NAME}
+#     PUBLIC
+#     ${Protobuf_INCLUDE_DIRS}
+#   )
+# endif()
+
+# PROTOBUF_GENERATE_CPP(PB_SRCS PF_HDRS protobuf/test.proto)
+# list(APPEND LIB_SRC ${PB_SRCS})
+# message(status $(LIB_SRC})
+#${PROTOBUF_LIBRARIES})
+
+
 set(LIBS
   yaml-cpp
   Boost::boost

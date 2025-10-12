@@ -21,7 +21,8 @@ void run()
 
     sylar::Socket::ptr sock = sylar::Socket::CreateUDP(addr);
 
-    sylar::IOManager::GetThis()->schedule([addr, sock]() {
+    sylar::IOManager::GetThis()->schedule([sock]() {
+        sylar::Address::ptr addr(new sylar::IPv4Address);
         SYLAR_LOG_INFO(g_logger) << "begin recv";
         while (true) {
             char buff[102];
@@ -51,8 +52,8 @@ void run()
             }
             else {
                 SYLAR_LOG_INFO(g_logger) << "send " << line << " len:" << len
-										<< ". please wait it...";
-								sleep(1);
+                                         << ". please wait it...";
+                sleep(1);
             }
         }
     }
