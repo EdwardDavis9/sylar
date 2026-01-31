@@ -83,8 +83,48 @@ struct timer_info {
     int cancelled = 0;
 };
 
-// 在协程环境中, 以非阻塞方式封装系统调用(read/write), 并支持自动挂起 +
-// 超时处理.
+ /**
+ * @brief   执行IO操作的模板函数,实现了协程化异步IO
+ * @details 该函数是sylar框架Hook系统的核心,负责将同步阻塞的IO操作
+ *          转换为异步非阻塞的协程化操作.处理了超时,信号中断,协程调度等复杂逻辑.
+ *          支持任意类型和数量的参数,通过完美转发保持参数特性.
+ *
+ * @tparam OriginFun 原始IO函数的类型(如read_f,write_f等)
+ * @tparam Args 可变参数模板,表示原始IO函数的参数类型列表
+ *
+ * @param[in] fd            文件描述符,要进行IO操作的目标
+ * @param[in] fun           原始IO函数指针(如read_f,write_f等系统调用)
+ * @param[in] hook_fun_name Hook函数名称,用于日志记录和调试(如"read","write")
+ * @param[in] event         IO事件类型,指定IOManager::READ或IOManager::WRITE
+ * @param[in] timeout_so    超时选项类型,指定是SO_RCVTIMEO或SO_SNDTIMEO
+ * @param[in] args          可变参数,传递给原始IO函数的参数(完美转发)
+ *
+ * @return ssize_t IO操作的结果:
+ *         - >0:成功读取/写入的字节数
+ *         - 0:对端关闭连接(对于TCP读操作)
+ *         - -1:发生错误,错误码存储在errno中
+ *
+ * @note 该函数仅在以下条件下进行协程化处理:
+ *       1. Hook功能已启用(sylar::t_hook_enable为true)
+ *       2. fd对应的FdCtx存在且未关闭
+ *       3. fd是socket类型且用户未设置非阻塞模式
+ *       否则将直接调用原始IO函数
+ *
+ * @attention 该函数可能会挂起当前协程,等待IO事件就绪或超时
+ * @warning 在协程环境中,应避免直接使用原始系统调用,而应通过此Hook机制
+ *
+ * @example
+ * // 在hook的read函数中调用:
+ * ssize_t read(int fd, void* buf, size_t count) {
+ *     return do_io(fd, read_f, "read",
+ *                  IOManager::READ, SO_RCVTIMEO,
+ *                  buf, count);
+ * }
+ *
+ * @see sylar::FdCtx
+ * @see sylar::IOManager
+ * @see sylar::Fiber
+ */
 template <typename OriginFun, class... Args>
 static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name,
                      uint32_t event, int timeout_so, Args &&...args)
@@ -122,7 +162,7 @@ retry:
     // 调用原始函数
     ssize_t n = fun(fd, std::forward<Args>(args)...);
 
-    // 如果被信号终止, 那么进行重试
+    // 如果被中断, 那么进行重试
     while (n == -1 && errno == EINTR) {
         n = fun(fd, std::forward<Args>(args)...);
     }
@@ -132,12 +172,12 @@ retry:
 
         // 获取当前线程的 iomanager. 即事件调度器
         sylar::IOManager *iom = sylar::IOManager::GetThis();
-        sylar::Timer::ptr timer;
+        sylar::Timer::ptr condition_timer_to_cancel_event;
         std::weak_ptr<timer_info> winfo(tinfo);
 
         // 如果设置了超时时间, 添加一个超时定时器, 定时取消当前事件
         if (to != (uint64_t)-1) {
-            timer = iom->addConditionTimer(
+            condition_timer_to_cancel_event = iom->addConditionTimer(
                 to,                         // 超时时间
                 [winfo, fd, iom, event]() { // 条件定时器的超时逻辑
                     auto t = winfo.lock();  // 临时提升为智能指针
@@ -152,7 +192,7 @@ retry:
                 winfo); // 条件变量: 定时器只在未取消状态下有效
         }
 
-        // 添加一个IO事件监听, 比如 EPOLLIN(读) 或 EPOLLOUT(写)
+        // 添加一个IO事件监听, 比如 EPOLLIN(读) 或 EPOLLOUT(写), 因为无论accpet成功与否都会进行通知
         int rt = iom->addEvent(fd, (sylar::IOManager::Event)(event));
 
         if (SYLAR_UNLICKLY(rt)) {
@@ -160,8 +200,8 @@ retry:
             SYLAR_LOG_ERROR(g_logger)
                 << hook_fun_name << " addEvent(" << fd << ", " << event << " )";
 
-            if (timer) {
-                timer->cancel();
+            if (condition_timer_to_cancel_event) {
+                condition_timer_to_cancel_event->cancel();
             }
             return -1;
         }
@@ -169,9 +209,11 @@ retry:
             // 让出协程的执行权
             sylar::Fiber::YieldToHold();
 
-            // 正常回调回来
-            if (timer) {
-                timer->cancel();
+
+            // epoll_wait 监听到对应的事件发生后
+            // 会在 idle 中返回到 schedule,最后在正常回调回来
+            if (condition_timer_to_cancel_event) {
+                condition_timer_to_cancel_event->cancel();
             }
             if (tinfo->cancelled) {
                 errno = tinfo->cancelled;
@@ -183,6 +225,10 @@ retry:
             goto retry;
         }
     }
+
+    // if (n >= 0) {
+    //     errno = 0;  // 清除错误码
+    // }
 
     return n;
 }
@@ -271,7 +317,7 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
         return connect_f(fd, addr, addrlen);
     }
 
-    // 如果设置了非阻塞
+    // 若用户主动设置非阻塞,则直接调用原函数,让用户自己处理异步连接
     if (ctx->getUserNonblock()) {
         return connect_f(fd, addr, addrlen);
     }
@@ -281,10 +327,12 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
         return 0; // 直接成功
     }
     else if (n != -1 || errno != EINPROGRESS) {
-        return n; // 如果不是“正在连接中”，那么发生了错误
+        return n; // 如果不是"正在连接中",那么发生了错误
     }
 
-    // 设置超时连接机制
+    // if (n == -1 && errno == EINPROGRESS) 的情况
+
+    // 设置超时取消写事件
     sylar::IOManager *iom = sylar::IOManager::GetThis();
     sylar::Timer::ptr timer;
     std::shared_ptr<timer_info> tinfo(new timer_info);
@@ -304,10 +352,13 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
             winfo);
     }
 
-    // 注册 WRITE 事件，并挂起协程
+    // 注册 WRITE 事件,并挂起协程
     int rt = iom->addEvent(fd, sylar::IOManager::WRITE);
     if (rt == 0) {
         sylar::Fiber::YieldToHold();
+
+        // epoll 回调回来后,在后面检测异步connect中的 fd 是否最终连接失败
+        // 先提前取消条件定时器
         if (timer) {
             timer->cancel();
         }
@@ -324,7 +375,7 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
             << "connect addEvent(" << fd << ", WRITE error";
     }
 
-    // 检查最终的连接结果
+    // 检查异步回来的连接是否失败
     int error     = 0;
     socklen_t len = sizeof(int);
     if (-1 == getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len)) {
@@ -483,7 +534,7 @@ int fcntl(int fd, int cmd, ...)
             if (!ctx || ctx->isClose() || !ctx->isSocket()) {
                 return arg;
             }
-            // 如果用户设置了非阻塞，则返回带 O_NONBLOCK
+            // 如果用户设置了非阻塞,则返回带 O_NONBLOCK
             if (ctx->getUserNonblock()) {
                 return arg | O_NONBLOCK;
             }
@@ -500,8 +551,9 @@ int fcntl(int fd, int cmd, ...)
         case F_NOTIFY:
 /* 规范化不同的系统 */
 #ifdef F_SETPIPE_SZ
-        case F_SETPIPE_SZ: {
+        case F_SETPIPE_SZ:
 #endif
+        {
             int arg = va_arg(va, int);
             va_end(va);
             return fcntl_f(fd, cmd, arg);
@@ -512,8 +564,9 @@ int fcntl(int fd, int cmd, ...)
         case F_GETLEASE:
 /* 规范化不同的系统 */
 #ifdef F_SETPIPE_SZ
-        case F_GETPIPE_SZ: {
+        case F_GETPIPE_SZ:
 #endif
+        {
             va_end(va);
             return fcntl_f(fd, cmd);
         } break;
@@ -536,7 +589,7 @@ int fcntl(int fd, int cmd, ...)
     }
 }
 
-int ioctl(int d, unsigned long request, ...)
+int ioctl(int fd, unsigned long request, ...)
 {
     va_list va;
     va_start(va, request);
@@ -545,13 +598,13 @@ int ioctl(int d, unsigned long request, ...)
 
     if (FIONBIO == request) {
         bool user_nonblock    = !!*(int *)arg;
-        sylar::FdCtx::ptr ctx = sylar::FdMgr::GetInstance()->get(d);
+        sylar::FdCtx::ptr ctx = sylar::FdMgr::GetInstance()->get(fd);
         if (!ctx || ctx->isClose() || !ctx->isSocket()) {
-            return ioctl_f(d, request, arg);
+            return ioctl_f(fd, request, arg);
         }
         ctx->setUserNonblock(user_nonblock);
     }
-    return ioctl_f(d, request, arg);
+    return ioctl_f(fd, request, arg);
 }
 
 int getsockopt(int sockfd, int level, int optname, void *optval,

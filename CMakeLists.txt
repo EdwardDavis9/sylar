@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/lib)
 
 include (./cmake/utils.cmake)
 
@@ -28,9 +28,9 @@ if (NOT MSVC)
 endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -rdynamic -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O3 -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
+  set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O2 -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 endif()
 
 enable_testing()

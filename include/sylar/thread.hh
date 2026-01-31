@@ -165,7 +165,7 @@ public:
 
 class RWMutex:Noncopyable {
 	public:
-	using ReadLock  = ReadScopedLockImpl <RWMutex>;
+	using ReadLock  = ReadScopedLockImpl<RWMutex>;
 	using WriteLock = WriteScopedLockImpl<RWMutex>;
 
 	RWMutex() {
@@ -284,8 +284,8 @@ private:
 	pid_t m_id         = 1;  /**< 线程标识 */
 	pthread_t m_thread = 0;  /**< 线程 */
 
-	std::function<void()> m_cb; /**< 线程回调函数 */
-	std::string m_name = "Thread_";         /**< 线程名 */
+	std::function<void()> m_cb;      /**< 线程回调函数 */
+	std::string m_name = "Thread_";  /**< 线程名 */
 
 	Semaphore m_semaphore;
 };

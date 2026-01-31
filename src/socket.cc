@@ -270,6 +270,8 @@ int Socket::sendTo(const iovec *buffers, size_t length, const Address::ptr to,
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_iov = (iovec*)buffers;
 		msg.msg_iovlen = length;
+		msg.msg_name = to->getAddr();
+		msg.msg_namelen = to->getAddrLen();
 		return ::sendmsg(m_sock, &msg, flags);
 	}
 	return -1;
@@ -374,6 +376,7 @@ Address::ptr Socket::getLocalAddress() {
 			break;
 	}
 
+	// 获得当前 socket 对应的地址信息
 	socklen_t addrlen = result->getAddrLen();
 	if(getsockname(m_sock, result->getAddr(), &addrlen)) {
 		SYLAR_LOG_ERROR(g_logger) << "getsockname error sock=" << m_sock
@@ -382,7 +385,8 @@ Address::ptr Socket::getLocalAddress() {
 	}
 
 	if(m_family == AF_UNIX) {
-			// 专门设置 Unix 套接字的实际存储大小
+		// 专门设置 Unix 套接字的实际存储大小, 因为地址不固定, 所以需要额外进行处理
+		// 其他类型 inet 和 inet6的地址长度是固定的, 因此不需要专门去设置
 		UnixAddress::ptr addr = std::dynamic_pointer_cast<UnixAddress>(result);
 		addr->setAddrLen(addrlen);
 	}
@@ -432,7 +436,7 @@ bool Socket::cancelAll() {
 void Socket::initSock() {
 	int val = 1;
 	setOption(SOL_SOCKET, SO_REUSEADDR, val);
-	if(m_type == SOCK_STREAM) {
+	if(m_type == SOCK_STREAM && (m_family == IPv4 || m_family == IPv6)) {
 		setOption(IPPROTO_TCP, TCP_NODELAY, val);
 	}
 }

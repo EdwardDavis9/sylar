@@ -21,8 +21,9 @@ void test_socket() {
 	sylar::IPAddress::ptr addr = sylar::Address::LookupAnyIPAddress("www.sogou.com");
 	if(addr) {
 		SYLAR_LOG_INFO(g_logger) << "get address: " << addr->toString();
+		SYLAR_LOG_INFO(g_logger) << "get address: " << addr->getFamilyToString();
 	} else {
-		SYLAR_LOG_ERROR(g_logger) << "get address faile";
+		SYLAR_LOG_ERROR(g_logger) << "get address failed";
 		return;
 	}
 

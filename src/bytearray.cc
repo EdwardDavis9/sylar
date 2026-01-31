@@ -110,19 +110,25 @@ void ByteArray::writeFuint64(uint64_t value)
 }
 
 static uint32_t EncodingZigzag32(const int32_t& v) {
-	if(v < 0) {
-		return (uint32_t)((v << 1) ^ (v >> 31));
-	} else {
-		return v << 1;
-	}
+
+	return (uint32_t)((v << 1) ^ (v >> (sizeof(v) * 8 - 1)));
+
+	// if(v < 0) {
+	// 	return (uint32_t)((v << 1) ^ (v >> 31));
+	// } else {
+	// 	return v << 1;
+	// }
 }
 
 static uint64_t EncodingZigzag64(const int64_t& v) {
-	if(v < 0) {
-		return (uint64_t)((v << 1) ^ (v >> 31));
-	} else {
-		return v << 1;
-	}
+
+	return (uint64_t)((v << 1) ^ (v >> (sizeof(v) * 8 - 1)));
+
+	// if(v < 0) {
+	// 	return (uint64_t)((v << 1) ^ (v >> 63));
+	// } else {
+	// 	return v << 1;
+	// }
 }
 
 static int32_t DecodingZigzag32(const uint32_t& v) {
@@ -144,6 +150,7 @@ void ByteArray::writeUint32(uint32_t value)
 	uint8_t tmp[5];
 	uint8_t i = 0;
 	while(value >= 0x80) {
+		// 大于128的话,就需要多个字节存储了
 		tmp[i++] = (value & 0x7F) | 0x80;
 		// 这里 & 0x80,即 msb=1 表示后续还有多余字节
 
@@ -222,13 +229,13 @@ int8_t ByteArray::readFint8()
 	return v;
 }
 
-#define XX(type)								                \
-	type v;										                \
-	read(&v, sizeof(v));						               	\
+#define XX(type)																					\
+	type v;																									\
+	read(&v, sizeof(v));																		\
 	if(m_endian == SYLAR_BYTE_ORDER) {			                \
-		return v;								                \
-	} else {								                    \
-		return byteswap(v);						                \
+		return v;																							\
+	} else {																								\
+		return byteswap(v);																		\
 	}
 
 int16_t ByteArray::readFint16()
@@ -324,10 +331,10 @@ double ByteArray::readDouble()
 	return value;
 }
 
-#define XX(type, fun)					   		\
-	type len = fun();									\
-	std::string buff;									\
-	buff.resize(len);									\
+#define XX(type, fun)									\
+	type len = fun();										\
+	std::string buff;										\
+	buff.resize(len);										\
 	read(&buff[0], len);								\
 	return buff;
 
@@ -369,7 +376,7 @@ void ByteArray::write(const void *buf, size_t size)
 	if(size == 0) {
 		return;
 	}
-	addCapacity(size);
+	addCapacityIfNeeded(size);
 
 	size_t npos = m_position % m_baseSize; // 当前 Node 内部的偏移位置
 	size_t ncap = m_cur->size - npos; // 当前 Node 剩余可写容量
@@ -405,7 +412,7 @@ void ByteArray::write(const void *buf, size_t size)
 }
 void ByteArray::read(void *buf, size_t read_size)
 {
-	if(read_size > getReadSize()){
+	if(read_size > getSizeForRead()){
 		throw std::out_of_range("not enough len");
 	}
 
@@ -433,9 +440,9 @@ void ByteArray::read(void *buf, size_t read_size)
 	}
 }
 
-void ByteArray::read(void *buf, size_t read_size, size_t position) const
+void ByteArray::readForPeek(void *buf, size_t read_size) const
 {
-	if(read_size > (m_size - position)){
+	if(read_size > (m_size - m_position)){
 		throw std::out_of_range("not enough len");
 	}
 
@@ -446,16 +453,10 @@ void ByteArray::read(void *buf, size_t read_size, size_t position) const
 	while(read_size > 0) {
 		if(ncap >= read_size) {
 			memcpy((char*)buf+bpos, cur->ptr + npos, read_size);
-			if(cur->size == (npos+read_size)) {
-				cur = cur->next;
-			}
-			position += read_size;
-			bpos += read_size;
-			read_size = 0;
+			break;
 		} else {
 			memcpy((char*)buf + bpos, cur->ptr + npos, ncap);
 			read_size -= ncap;
-			position += ncap;
 			bpos += ncap;
 			cur = cur->next;
 			ncap = cur->size;
@@ -463,6 +464,43 @@ void ByteArray::read(void *buf, size_t read_size, size_t position) const
 		}
 	}
 }
+
+void ByteArray::readForPeekAt(void* buf,
+															size_t read_size,
+															size_t position) const
+{
+    if(read_size > (m_size - position)) {
+        throw std::out_of_range("not enough len");
+    }
+
+    // 1. 找到起始 node
+    Node* cur = m_root;
+    size_t pos = position;
+
+    while(pos >= cur->size) {
+        pos -= cur->size;
+        cur = cur->next;
+    }
+
+    size_t npos = pos;
+    size_t ncap = cur->size - npos;
+    size_t bpos = 0;
+
+    while(read_size > 0) {
+        if(ncap >= read_size) {
+            memcpy((char*)buf + bpos, cur->ptr + npos, read_size);
+            break;
+        } else {
+            memcpy((char*)buf + bpos, cur->ptr + npos, ncap);
+            read_size -= ncap;
+            bpos += ncap;
+            cur = cur->next;
+            npos = 0;
+            ncap = cur->size;
+        }
+    }
+}
+
 
 void ByteArray::setPosition(size_t v)
 {
@@ -498,7 +536,7 @@ bool ByteArray::writeToFile(const std::string &name) const
 								  << " error ,errno=" << errno << " errstr = " << strerror(errno);
 		return false;
 	}
-	int64_t read_size = getReadSize();
+	int64_t read_size = getSizeForRead();
 	int64_t pos = m_position;
 	Node* cur = m_cur;
 
@@ -523,7 +561,7 @@ bool ByteArray::readFromFile(const std::string &name)
 		return false;
 	}
 
-	std::shared_ptr<char>buf(new char[m_baseSize], [](char* ptr) { delete [] ptr; });
+	std::shared_ptr<char> buf(new char[m_baseSize], [](char* ptr) { delete [] ptr; });
 
 	while(!ifs.eof()) {
 		ifs.read(buf.get(), m_baseSize);
@@ -549,11 +587,11 @@ void ByteArray::setLittleEndian(bool val)
 std::string ByteArray::toString() const
 {
 	std::string str;
-	str.resize(getReadSize());
+	str.resize(getSizeForRead());
 	if(str.empty()) {
 		return str;
 	}
-	read(&str[0], str.size(), m_position);
+	readForPeek(&str[0], str.size());
 	return str;
 }
 
@@ -566,7 +604,9 @@ std::string ByteArray::toHexString() const
 			ss << std::endl; // 每 32 字节就换一次行
 		}
 
-		// 把字符当作 无符号 8 位整数, 再转成 int 方便 stringstream 输出
+		// 把字符当作 无符号 8 位整数, 先获得原始字节表示
+		// 由于 u8 是unsigned char 类型的别名,所以在向stringsteam中输入时, 实际上输入的是字符
+		// 因此需要再转成 int 表示数据是整数, 这样也方便 stringstream 输出
 		ss << std::setw(2) << std::setfill('0') << std::hex
 		   << (int)(uint8_t)str[i] << " ";
 	}
@@ -576,7 +616,7 @@ std::string ByteArray::toHexString() const
 
 uint64_t ByteArray::getReadBuffers(std::vector<iovec> &buffers,uint64_t len) const
 {
-	len = len > getReadSize() ? getReadSize() : len;
+	len = len > getSizeForRead() ? getSizeForRead() : len;
 	if(len == 0) {
 		return 0;
 	}
@@ -605,25 +645,23 @@ uint64_t ByteArray::getReadBuffers(std::vector<iovec> &buffers,uint64_t len) con
 	return size;
 }
 
-uint64_t ByteArray::getReadBuffers(std::vector<iovec> &buffers,
+uint64_t ByteArray::getReadBuffersAt(std::vector<iovec> &buffers,
 								   uint64_t len,
 								   uint64_t position) const
 {
-	len = len >getReadSize() ? getReadSize() : len;
-	if(len == 0) {
+	if(position >= m_size) {
 		return 0;
 	}
+	len = std::min(len, m_size-position);
 
 	uint64_t size = len;
-	size_t npos = m_position % m_baseSize;
+	size_t npos = position % m_baseSize;
 	size_t count = position / m_baseSize;
 	Node*cur = m_root;;
-	while(count > 0) {
-		cur = cur->next;
-		--count;
-	}
+	while(count--) { cur = cur->next; }
+	if(!cur) return 0;
 
-	size_t ncap = m_cur->size - npos;
+	size_t ncap = cur->size - npos;
 	struct iovec iov;
 
 	while(len > 0) {
@@ -641,15 +679,15 @@ uint64_t ByteArray::getReadBuffers(std::vector<iovec> &buffers,
 		}
 		buffers.push_back(iov);
 	}
-	return size;
-
+	return buffers.size()? size : 0;
 }
+
 uint64_t ByteArray::getWriteBuffers(std::vector<iovec> &buffers, uint64_t len)
 {
     if(len == 0) {
         return 0;
     }
-    addCapacity(len);
+    addCapacityIfNeeded(len);
     uint64_t size = len;
 
     size_t npos = m_position % m_baseSize; // 当前操作的位置
@@ -674,26 +712,35 @@ uint64_t ByteArray::getWriteBuffers(std::vector<iovec> &buffers, uint64_t len)
         }
         buffers.push_back(iov);
     }
-    return size;
+    return buffers.size() ? size : 0;
 }
 
-void ByteArray::addCapacity(size_t new_cap)
+size_t ByteArray::getNodeCount() const {
+    size_t count = 0;
+    Node* cur = m_root;
+    while(cur) {
+        ++count;
+        cur = cur->next;
+    }
+    return count;
+}
+
+void ByteArray::addCapacityIfNeeded(size_t ensureCapacity)
 {
-	if(new_cap == 0) {
+	if(ensureCapacity == 0) {
 		return;
 	}
 
-	size_t old_cap = getCapacity(); // 旧容量
-	if(old_cap >= new_cap ){
+	size_t old_cap = getSizeForWrite(); // 旧容量
+	if(old_cap >= ensureCapacity ){
 		return;
 	}
-	new_cap = new_cap - old_cap; // 还需要扩容的容量
+	ensureCapacity = ensureCapacity - old_cap; // 还需要扩容的容量
 
 	// 还需要创建的node的个数
-    // NOTE 自行调整了
-    size_t count = (new_cap / m_baseSize) + ((new_cap % m_baseSize) ? 1 :0);
+	size_t count = (ensureCapacity / m_baseSize) + ((ensureCapacity % m_baseSize) ? 1 :0);
 
-	Node* tmp =m_root;
+	Node* tmp = m_root;
 	while(tmp->next) {
 		tmp = tmp->next;
 	}

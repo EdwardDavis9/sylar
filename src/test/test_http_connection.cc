@@ -13,14 +13,18 @@ static sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 void test_pool()
 {
     sylar::http::HttpConnectionPool::ptr pool(
-        new sylar::http::HttpConnectionPool("www.baidu.com", "", 80, 10,
+        new sylar::http::HttpConnectionPool("www.baidu.com", "", 80, 1,
                                             1000 * 30, 5));
     sylar::IOManager::GetThis()->addTimer(
         1000,
         [pool]() {
-            auto r = pool->doGet("/", 300);
+            auto r = pool->doGet("/", 3000);
 
-            SYLAR_LOG_INFO(g_logger) << r->toString();
+            // SYLAR_LOG_INFO(g_logger) << r->toString();
+            // SYLAR_LOG_INFO(g_logger) << r->m_response->toString();
+
+            auto conn_header = r->m_response->getHeaders("connection", "xxxxxxxxxxxxxxxx");
+            SYLAR_LOG_INFO(g_logger) << "Server Connection header: " << conn_header;
         },
         true);
 }
@@ -30,6 +34,7 @@ void run()
 #if 0
     sylar::Address::ptr addr =
         sylar::Address::LookupAnyIPAddress("www.baidu.com:80");
+        // sylar::Address::LookupAnyIPAddress("www.httpbin.com:80");
 
     if (!addr) {
         SYLAR_LOG_INFO(g_logger) << "get addr error";
@@ -50,6 +55,7 @@ void run()
     req->setPath("/");
     req->setHeader("User-Agent", "curl/7.81.0");
     req->setHeader("host", "www.baidu.com");
+    // req->setHeader("host", "www.httpbin.com");
 
     SYLAR_LOG_INFO(g_logger) << "req:" << std::endl
     	<< *req;
@@ -60,7 +66,7 @@ void run()
     int64_t n = conn->sendRequest(req);
     SYLAR_LOG_INFO(g_logger) << "sendRequest returned bytes=" << n;
 
-    SYLAR_LOG_INFO(g_logger) << "about to recvResponse";
+    SYLAR_LOG_INFO(g_logger) << "wait to recvResponse";
     auto rsp = conn->recvResponse();
 
     if (!rsp) {
@@ -73,7 +79,8 @@ void run()
 
     SYLAR_LOG_INFO(g_logger) << "=========================";
 
-    auto r = sylar::http::HttpConnection::DoGet("https://www.baidu.com/", 3000);
+    auto r = sylar::http::HttpConnection::DoGet("http://www.baidu.com/", 3000);
+    // auto r = sylar::http::HttpConnection::DoGet("http://www.httpbin.com/", 3000);
     SYLAR_LOG_INFO(g_logger)
         << "result=" << r->m_result << " error=" << r->m_error
         << " rsp="

@@ -19,10 +19,15 @@ namespace sylar {
 
 /*
      foo://user@sylar.com:8042/over/there?name=ferret#nose
-       \_/   \______________/\_________/ \_________/ \__/
-        |           |            |            |        |
+      |   |                    |          |           |  |
      scheme     authority       path        query   fragment
-*/
+
+     scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+     authority     = [ userinfo "@" ] host [ ":" port ]
+     userinfo      = *( unreserved / pct-encoded / sub-delims / ":" )
+     host          = IP-literal / IPv4address / reg-name
+     port          = *DIGIT
+* */
 namespace http {
 /**
  * @class Uri

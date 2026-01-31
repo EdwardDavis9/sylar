@@ -58,6 +58,8 @@ class Env {
      */
     bool has(const std::string &key);
 
+    bool argsIsEmpty();
+
     /**
      * @brief 删除某个参数
      */
@@ -123,6 +125,7 @@ class Env {
      */
     std::string getEnv(const std::string &key,
                        const std::string &default_value = "");
+    std::string getAbsolutePath(const std::string& path) const;
 
   private:
     RWMutexType m_mutex;

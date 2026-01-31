@@ -10,8 +10,7 @@ namespace http {
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
-std::string HttpResult::toString() const
-{
+std::string HttpResult::toString() const {
     std::stringstream ss;
     ss << "[HttpResult result=" << m_result << " error=" << m_error
        << " response=" << (m_response ? m_response->toString() : "nullptr")
@@ -20,16 +19,15 @@ std::string HttpResult::toString() const
 }
 
 HttpConnection::HttpConnection(Socket::ptr sock, bool owner)
-    : SocketStream(sock, owner)
-{}
+    : SocketStream(sock, owner) {
+    m_createTime = sylar::GetCurrentMS();
+}
 
-HttpConnection::~HttpConnection()
-{
+HttpConnection::~HttpConnection() {
     SYLAR_LOG_DEBUG(g_logger) << "HttpConnection::~HttpConnection";
 }
 
-HttpResponse::ptr HttpConnection::recvResponse()
-{
+HttpResponse::ptr HttpConnection::recvResponse() {
     HttpResponseParser::ptr parser(new HttpResponseParser);
     uint64_t response_buffer_size =
         HttpResponseParser::GetHttpResponseBufferSize();
@@ -38,27 +36,27 @@ HttpResponse::ptr HttpConnection::recvResponse()
     std::shared_ptr<char> buffer(new char[response_buffer_size + 1],
                                  [](char *ptr) { delete[] ptr; });
 
-    char *data          = buffer.get();
+    char *data = buffer.get();
     int unparsed_offset = 0; // 已经解析的数据, 或者说未解析数据的位置
     // 接受并解析头部字段
     do {
-        int read_size = read(data + unparsed_offset,
-                             response_buffer_size - unparsed_offset);
-        if (read_size <= 0) {
+        int current_read_size = read(data + unparsed_offset,
+                                     response_buffer_size - unparsed_offset);
+        if (current_read_size <= 0) {
             close();
             return nullptr;
         }
-        read_size += unparsed_offset;
+        current_read_size += unparsed_offset;
 
-        data[read_size] = '\0';
+        data[current_read_size] = '\0';
 
-        size_t nparser = parser->execute(data, read_size, false);
+        size_t nparser = parser->execute(data, current_read_size, false);
         if (parser->hasError()) {
             close();
             return nullptr;
         }
 
-        unparsed_offset = read_size - nparser;
+        unparsed_offset = current_read_size - nparser;
         if (unparsed_offset == (int)response_buffer_size) {
             // 首次请求解析的数据等于当前的 response_buffer_size,
             // 那么说明是恶意请求, 数据过大
@@ -78,6 +76,8 @@ HttpResponse::ptr HttpConnection::recvResponse()
         int unparsed_index = unparsed_offset;
         // 分块传输
         do {
+            // 通过 do-while 读取 chunk data 的长度头, 避免传输时的分段的行为,
+            // 因为状态检测依靠一个完整的模式才能表示状态检测结束
             do {
                 int read_size = read(data + unparsed_index,
                                      response_buffer_size - unparsed_index);
@@ -103,105 +103,149 @@ HttpResponse::ptr HttpConnection::recvResponse()
                 }
             } while (!parser->isFinished());
 
-            // crlf 占据两个空间
-            // 每个 chunk 的数据后面都有 CRLF (\r\n)
-            // 减去 2 表示 去掉末尾的 CRLF, 准备拼接到 body
-            unparsed_index -= 2;
-
-            SYLAR_LOG_INFO(g_logger)
-                << "client_content-len=" << client_parser.content_len;
-
-            // 每个 chunked 段的实际大小： 长度头 + 实际的数据体
-            if (client_parser.content_len <= unparsed_index) {
-                // 在解析时, 头部字段内容已经被消耗, 追加前 conten_len 个
-                body.append(data, client_parser.content_len);
-                memmove(data,data+client_parser.content_len,
-                       unparsed_index-client_parser.content_len);
-
-                unparsed_index -= client_parser.content_len;
-            } else {
-                // 只读取固定前长度
-                body.append(data, unparsed_index);
-                int left = client_parser.content_len - unparsed_index;
-                while(left > 0) {
-                    int read_size = read(data, left > (int)response_buffer_size
-                                         ? (int)response_buffer_size:left);
-                    if(read_size <=  0) {
-                        close();
-                        return nullptr;
+            int64_t chunk_size = client_parser.content_len;
+            // 最后一个chunk(大小为0)的话
+            if (chunk_size == 0) {
+                if (unparsed_index >= 2) {
+                    unparsed_index -= 2;
+                    if (unparsed_index > 0) {
+                        memmove(data, data + 2, unparsed_index);
                     }
-                    body.append(data, read_size);
-                    left -= read_size;
                 }
-                unparsed_index = 0;
+                break;
             }
+            int64_t need = chunk_size;
+            if (unparsed_index > 0) {
+                size_t take = std::min((size_t)unparsed_index, (size_t)need);
+                body.append(data, take);
+
+                need -= take;
+                unparsed_index -= take;
+
+                // 移动缓冲区
+                if (unparsed_index > 0) {
+                    memmove(data, data + take, unparsed_index);
+                }
+            }
+
+            // 如果chunk_data不完整,即还需要更多数据
+            if (need > 0) {
+                // 从socket读取剩余数据
+                std::vector<char> temp(need);
+                if (readFixSize(temp.data(), need) <= 0) {
+                    close();
+                    return nullptr;
+                }
+                body.append(temp.data(), need);
+            }
+
+            // === 跳过数据体后的CRLF ===
+            // 注意:此时缓冲区中可能是下一个chunk的头部
+            // 我们需要读取并丢弃2字节的CRLF
+            char crlf[2];
+            if (readFixSize(crlf, 2) <= 0) {
+                close();
+                return nullptr;
+            }
+            // －－－
+
+            // // chunk 部分中: 4\r\nWiki\r\n7\r\nabdcefg\r\n
+            // //  每个 chunk 的数据后面都有 CRLF (\r\n)
+            // //  减去 2 表示 去掉 chunk data 末尾的 CRLF, 准备拼接到 body
+            // unparsed_index -= 2;
+
+            // SYLAR_LOG_INFO(g_logger)
+            //     << "client_content-len=" << client_parser.content_len;
+
+            // // 每个 chunked 段的实际大小: 长度头 + 实际的数据体
+            // if (client_parser.content_len <= unparsed_index) {
+            //     // 在解析时, 头部字段内容已经被消耗, 追加前 conten_len 个
+            //     body.append(data, client_parser.content_len);
+
+            //     // 消耗掉读取的 chunk data
+            //     unparsed_index -= client_parser.content_len;
+            //     memmove(data, data + client_parser.content_len,
+            //     unparsed_index);
+
+            // }
+            // else {
+            //     // 只读取固定前长度
+            //     body.append(data, unparsed_index);
+            //     int left = client_parser.content_len - unparsed_index;
+            //     while (left > 0) {
+            //         int read_size = read(data, left >
+            //         (int)response_buffer_size
+            //                                        ?
+            //                                        (int)response_buffer_size
+            //                                        : left);
+            //         if (read_size <= 0) {
+            //             close();
+            //             return nullptr;
+            //         }
+            //         body.append(data, read_size);
+            //         left -= read_size;
+            //     }
+            //     unparsed_index = 0;
+            // }
         } while (!client_parser.chunks_done);
         parser->getData()->setBody(body);
-     }
-    else {
+    } else { // 非chunk类型的话，直接读取
         int64_t content_size = parser->getContentLength();
         if (content_size > 0) {
+
             std::string body;
+            int need = content_size;
+            int take = std::min(need, unparsed_offset);
 
-#if 0
-            body.reserve(content_size);
-            size_t already_use = 0;
-            if ((int64_t)unparsed_offset > 0) {
-
-                // 这里只能拷贝正文长度那么多
-                // unparsed_offset 可能大于正文长度(后面跟着下一个请求的起始)
-                size_t take =
-                    std::min((size_t)unparsed_offset, (size_t)content_size);
-                body.append(data, take);
-                already_use = take;
-            }
-
-            // 还需要从 socket 读多少
-            size_t need = (size_t)content_size - already_use;
-            if (need > 0) {
-                size_t old = body.size();
-                body.resize(old + need); // 先扩大 size
-                if (readFixSize(&body[old], need) <= 0) {
-                    close();
-                    return nullptr;
-                }
-            }
-#endif
-
-#if 1
             body.resize(content_size);
-            int len = 0;
-            if (content_size >= unparsed_offset) {
-                memcpy(&body[0], data, unparsed_offset);
-                len = unparsed_offset;
+            if (take) {
+                memcpy(&body[0], data, take);
             }
-            else {
-                memcpy(&body[0], data, content_size);
-                // 缓冲区中的未解析数据比 content_size 还大
-                // 说明缓冲区里的数据已经能把整个 body 填满,
-                // 即还存其他的请求数据 因此本次请求解析只需要读取 content_size
-                // 个数据即可
-                len = content_size;
-            }
-            content_size -= unparsed_offset;
 
-            if (content_size > 0) {
-                // 如果还未读取完毕请求体的话, 接下来读取剩下的请求体
-                if (readFixSize(&body[len], content_size) <= 0) {
+            // body.reserve(content_size);
+            // body.append(data, take);
+
+            need -= take;
+            if (need) {
+                if (readFixSize(&body[take], need) <= 0) {
                     close();
                     return nullptr;
                 }
             }
-#endif
-
             parser->getData()->setBody(body);
+
+            // int len = 0;
+            // if (content_size >= unparsed_offset) {
+            //     memcpy(&body[0], data, unparsed_offset);
+            //     len = unparsed_offset;
+            // }
+            // else {
+            //     memcpy(&body[0], data, content_size);
+            //     // 缓冲区中的未解析数据比 content_size 还大
+            //     // 说明缓冲区里的数据已经能把整个 body 填满,
+            //     // 即还存其他的请求数据 因此本次请求解析只需要读取
+            //     content_size
+            //     // 个数据即可
+            //     len = content_size;
+            // }
+            // content_size -= unparsed_offset;
+
+            // if (content_size > 0) {
+            //     // 如果还未读取完毕请求体的话, 接下来读取剩下的请求体
+            //     if (readFixSize(&body[len], content_size) <= 0) {
+            //         close();
+            //         return nullptr;
+            //     }
+            // }
+            // parser->getData()->setBody(body);
+        } else if (content_size == 0) {
+            parser->getData()->setBody("");
         }
     }
     return parser->getData();
 }
 
-int HttpConnection::sendRequest(HttpRequest::ptr rsp)
-{
+int HttpConnection::sendRequest(HttpRequest::ptr rsp) {
     std::stringstream ss;
     ss << *rsp;
     std::string data = ss.str();
@@ -211,8 +255,7 @@ int HttpConnection::sendRequest(HttpRequest::ptr rsp)
 HttpResult::ptr
 HttpConnection::DoGet(const std::string &url, uint64_t timeout_ms,
                       const std::map<std::string, std::string> &headers,
-                      const std::string &body)
-{
+                      const std::string &body) {
     Uri::ptr uri = Uri::Create(url);
     if (!uri) {
         return std::make_shared<HttpResult>((int)HttpResult::Error::INVAILD_URL,
@@ -225,16 +268,14 @@ HttpConnection::DoGet(const std::string &url, uint64_t timeout_ms,
 HttpResult::ptr
 HttpConnection::DoGet(Uri::ptr uri, uint64_t timeout_ms,
                       const std::map<std::string, std::string> &headers,
-                      const std::string &body)
-{
+                      const std::string &body) {
     return DoRequest(HttpMethod::GET, uri, timeout_ms, headers, body);
 }
 
 HttpResult::ptr
 HttpConnection::DoPost(const std::string &url, uint64_t timeout_ms,
                        const std::map<std::string, std::string> &headers,
-                       const std::string &body)
-{
+                       const std::string &body) {
     Uri::ptr uri = Uri::Create(url);
     if (!uri) {
         return std::make_shared<HttpResult>((int)HttpResult::Error::INVAILD_URL,
@@ -246,28 +287,27 @@ HttpConnection::DoPost(const std::string &url, uint64_t timeout_ms,
 HttpResult::ptr
 HttpConnection::DoPost(Uri::ptr uri, uint64_t timeout_ms,
                        const std::map<std::string, std::string> &headers,
-                       const std::string &body)
-{
-    return DoRequest(HttpMethod::GET, uri, timeout_ms, headers, body);
+                       const std::string &body) {
+    return DoRequest(HttpMethod::POST, uri, timeout_ms, headers, body);
 }
 
-HttpResult::ptr HttpConnection::DoRequest(
-    HttpMethod method, const std::string &url, uint64_t timeout_ms,
-    const std::map<std::string, std::string> &headers, const std::string &body)
-{
+HttpResult::ptr
+HttpConnection::DoRequest(HttpMethod method, const std::string &url,
+                          uint64_t timeout_ms,
+                          const std::map<std::string, std::string> &headers,
+                          const std::string &body) {
     Uri::ptr uri = Uri::Create(url);
     if (!uri) {
         return std::make_shared<HttpResult>((int)HttpResult::Error::INVAILD_URL,
                                             nullptr, "invaild url:" + url);
     }
-    return DoPost(uri, timeout_ms, headers, body);
+    return DoRequest(method, uri, timeout_ms, headers, body);
 }
 
 HttpResult::ptr
 HttpConnection::DoRequest(HttpMethod method, Uri::ptr uri, uint64_t timeout_ms,
                           const std::map<std::string, std::string> &headers,
-                          const std::string &body)
-{
+                          const std::string &body) {
     HttpRequest::ptr req = std::make_shared<HttpRequest>();
     req->setPath(uri->getPath());
     req->setQuery(uri->getQuery());
@@ -299,8 +339,7 @@ HttpConnection::DoRequest(HttpMethod method, Uri::ptr uri, uint64_t timeout_ms,
 }
 
 HttpResult::ptr HttpConnection::DoRequest(HttpRequest::ptr req, Uri::ptr uri,
-                                          uint64_t timeout_ms)
-{
+                                          uint64_t timeout_ms) {
     // 创建 Host
     Address::ptr addr = uri->createAddress();
     if (!addr) {
@@ -327,7 +366,7 @@ HttpResult::ptr HttpConnection::DoRequest(HttpRequest::ptr req, Uri::ptr uri,
 
     // 获得连接对象
     HttpConnection::ptr conn = std::make_shared<HttpConnection>(sock);
-    int rt                   = conn->sendRequest(req);
+    int rt = conn->sendRequest(req);
     if (rt == 0) {
         return std::make_shared<HttpResult>(
             (int)HttpResult::Error::SEND_CLOSE_BY_PEER, nullptr,
@@ -336,8 +375,8 @@ HttpResult::ptr HttpConnection::DoRequest(HttpRequest::ptr req, Uri::ptr uri,
     if (rt < 0) {
         return std::make_shared<HttpResult>(
             (int)HttpResult::Error::SEND_SOCKET_ERROR, nullptr,
-            "send request socket error errno=" + std::to_string(errno)
-                + " errstr=" + std::string(strerror(errno)));
+            "send request socket error errno=" + std::to_string(errno) +
+                " errstr=" + std::string(strerror(errno)));
     }
     auto rsp = conn->recvResponse();
     if (!rsp) {
@@ -354,12 +393,10 @@ HttpConnectionPool::HttpConnectionPool(const std::string &host,
                                        uint32_t max_alive_time,
                                        uint32_t max_request)
     : m_host(host), m_vhost(vhost), m_port(port), m_maxSize(max_size),
-      m_maxAliveTime(max_alive_time), m_maxRequest(max_request)
-{}
+      m_maxAliveTime(max_alive_time), m_maxRequest(max_request) {}
 
-HttpConnection::ptr HttpConnectionPool::getConnection()
-{
-    uint64_t now_ms     = sylar::GetCurrentMS();
+HttpConnection::ptr HttpConnectionPool::getConnection() {
+    uint64_t now_ms = sylar::GetCurrentMS();
     HttpConnection *ptr = nullptr;
 
     std::vector<HttpConnection *> invaild_conns;
@@ -373,7 +410,7 @@ HttpConnection::ptr HttpConnectionPool::getConnection()
             invaild_conns.push_back(conn);
             continue;
         }
-        if ((conn->m_createTime + m_maxAliveTime) > now_ms) {
+        if ((conn->m_createTime + m_maxAliveTime) <= now_ms) {
             invaild_conns.push_back(conn);
             continue;
         }
@@ -391,6 +428,16 @@ HttpConnection::ptr HttpConnectionPool::getConnection()
 
     // 若不存在有效的连接, 那么创建一个连接
     if (!ptr) {
+        // 增加新连接时，判断是否已经达到最大的连接数
+        {
+            MutexType::Lock lock(m_mutex);
+            if (static_cast<uint32_t>(m_total) >= m_maxSize) {
+                SYLAR_LOG_ERROR(g_logger)
+                    << "Connection pool is full, max_size=" << m_maxSize;
+                return nullptr;
+            }
+        }
+
         IPAddress::ptr addr = Address::LookupAnyIPAddress(m_host);
         if (!addr) {
             SYLAR_LOG_ERROR(g_logger) << "get addr fail: " << m_host;
@@ -412,21 +459,22 @@ HttpConnection::ptr HttpConnectionPool::getConnection()
 
         ptr = new HttpConnection(sock);
         ++m_total;
+        // SYLAR_LOG_DEBUG(g_logger) << "新建连接+++++++++++++++++";
     }
 
+    // SYLAR_LOG_DEBUG(g_logger) << "复用连接=================";
     return HttpConnection::ptr(
         ptr, [this](HttpConnection *p) { this->ReleasePtr(p, this); });
 }
 
 void HttpConnectionPool::ReleasePtr(HttpConnection *ptr,
-                                    HttpConnectionPool *pool)
-{
+                                    HttpConnectionPool *pool) {
     ++ptr->m_request;
-    if (!ptr->isConnected()
-        || ((ptr->m_createTime + pool->m_maxAliveTime) >= sylar::GetCurrentMS())
-        || (ptr->m_request >= pool->m_maxRequest))
-    {
-
+    if (!ptr->isConnected() ||
+        ((ptr->m_createTime + pool->m_maxAliveTime) <= sylar::GetCurrentMS()) ||
+        (ptr->m_request >= pool->m_maxRequest)) {
+        SYLAR_LOG_DEBUG(g_logger)
+            << "----------ReleasePtr, m_request is " << ptr->m_request;
         delete ptr;
         --pool->m_total;
         return;
@@ -438,16 +486,14 @@ void HttpConnectionPool::ReleasePtr(HttpConnection *ptr,
 HttpResult::ptr
 HttpConnectionPool::doGet(const std::string &url, uint64_t timeout_ms,
                           const std::map<std::string, std::string> &headers,
-                          const std::string &body)
-{
+                          const std::string &body) {
     return doRequest(HttpMethod::GET, url, timeout_ms, headers, body);
 }
 
 HttpResult::ptr
 HttpConnectionPool::doGet(Uri::ptr uri, uint64_t timeout_ms,
                           const std::map<std::string, std::string> &headers,
-                          const std::string &body)
-{
+                          const std::string &body) {
     std::stringstream ss;
     ss << uri->getPath() << (uri->getQuery().empty() ? "" : "?")
        << uri->getQuery() << (uri->getFragment().empty() ? "" : "#")
@@ -459,16 +505,14 @@ HttpConnectionPool::doGet(Uri::ptr uri, uint64_t timeout_ms,
 HttpResult::ptr
 HttpConnectionPool::doPost(const std::string &url, uint64_t timeout_ms,
                            const std::map<std::string, std::string> &headers,
-                           const std::string &body)
-{
+                           const std::string &body) {
     return doRequest(HttpMethod::POST, url, timeout_ms, headers, body);
 }
 
 HttpResult::ptr
 HttpConnectionPool::doPost(Uri::ptr uri, uint64_t timeout_ms,
                            const std::map<std::string, std::string> &headers,
-                           const std::string &body)
-{
+                           const std::string &body) {
     std::stringstream ss;
     ss << uri->getPath() << (uri->getQuery().empty() ? "" : "?")
        << uri->getQuery() << (uri->getFragment().empty() ? "" : "#")
@@ -476,10 +520,11 @@ HttpConnectionPool::doPost(Uri::ptr uri, uint64_t timeout_ms,
     return doPost(ss.str(), timeout_ms, headers, body);
 }
 
-HttpResult::ptr HttpConnectionPool::doRequest(
-    HttpMethod method, const std::string &url, uint64_t timeout_ms,
-    const std::map<std::string, std::string> &headers, const std::string &body)
-{
+HttpResult::ptr
+HttpConnectionPool::doRequest(HttpMethod method, const std::string &url,
+                              uint64_t timeout_ms,
+                              const std::map<std::string, std::string> &headers,
+                              const std::string &body) {
     // 构造请求对象
     HttpRequest::ptr req = std::make_shared<HttpRequest>();
     req->setPath(url);      // 路径
@@ -506,8 +551,7 @@ HttpResult::ptr HttpConnectionPool::doRequest(
     if (!has_host) {
         if (m_vhost.empty()) {
             req->setHeader("Host", m_host);
-        }
-        else {
+        } else {
             req->setHeader("Host", m_vhost);
         }
     }
@@ -516,10 +560,11 @@ HttpResult::ptr HttpConnectionPool::doRequest(
     return doRequest(req, timeout_ms);
 }
 
-HttpResult::ptr HttpConnectionPool::doRequest(
-    HttpMethod method, Uri::ptr uri, uint64_t timeout_ms,
-    const std::map<std::string, std::string> &headers, const std::string &body)
-{
+HttpResult::ptr
+HttpConnectionPool::doRequest(HttpMethod method, Uri::ptr uri,
+                              uint64_t timeout_ms,
+                              const std::map<std::string, std::string> &headers,
+                              const std::string &body) {
 
     std::stringstream ss;
     ss << uri->getPath() << (uri->getQuery().empty() ? "" : "?")
@@ -529,8 +574,7 @@ HttpResult::ptr HttpConnectionPool::doRequest(
 }
 
 HttpResult::ptr HttpConnectionPool::doRequest(HttpRequest::ptr req,
-                                              uint64_t timeout_ms)
-{
+                                              uint64_t timeout_ms) {
     // 获得一个连接
     auto conn = getConnection();
     if (!conn) {
@@ -555,15 +599,15 @@ HttpResult::ptr HttpConnectionPool::doRequest(HttpRequest::ptr req,
     if (rt == 0) {
         return std::make_shared<HttpResult>(
             (int)HttpResult::Error::SEND_CLOSE_BY_PEER, nullptr,
-            "send request closed by peer:"
-                + sock->getRemoteAddress()->toString());
+            "send request closed by peer:" +
+                sock->getRemoteAddress()->toString());
     }
 
     if (rt < 0) {
         return std::make_shared<HttpResult>(
             (int)HttpResult::Error::SEND_SOCKET_ERROR, nullptr,
-            "send request socket error errno=" + std::to_string(errno)
-                + " errstr=" + std::string(strerror(errno)));
+            "send request socket error errno=" + std::to_string(errno) +
+                " errstr=" + std::string(strerror(errno)));
     }
 
     auto rsp = conn->recvResponse();
@@ -571,8 +615,8 @@ HttpResult::ptr HttpConnectionPool::doRequest(HttpRequest::ptr req,
     if (!rsp) {
         return std::make_shared<HttpResult>(
             (int)HttpResult::Error::TIMEOUT, nullptr,
-            "recv response timeout:" + sock->getRemoteAddress()->toString()
-                + " timeout_ms:" + std::to_string(timeout_ms));
+            "recv response timeout:" + sock->getRemoteAddress()->toString() +
+                " timeout_ms:" + std::to_string(timeout_ms));
     }
     return std::make_shared<HttpResult>((int)HttpResult::Error::OK, rsp, "ok");
 }

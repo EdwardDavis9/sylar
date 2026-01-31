@@ -59,8 +59,8 @@ Address::ptr Address::Create(const sockaddr *addr, socklen_t addrlen)
 bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
                      int family, int type, int protocol)
 {
-    std::string node;
-    const char *service = nullptr;
+    std::string host_ip;
+    const char *host_port = nullptr;
 
     // 一个 ipv6 的地址示例, http://[2001:0:3238:E1:0063:FEFB]:80
     if (!host.empty() && host[0] == '[') {
@@ -71,30 +71,32 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
             if ((endipv6 + 1 < host.c_str() + host.size())
                 && *(endipv6 + 1) == ':')
             {
-                service = endipv6 + 2; // 定位服务端口 ip
+                host_port = endipv6 + 2; // 定位服务端口 ip
             }
-            node = host.substr(1, endipv6 - host.c_str() - 1); // 定位主机 host
+
+            // 定位主机 host
+            host_ip = host.substr(1, endipv6 - host.c_str() - 1);
         }
     }
 
     // 非 IPV6 格式地址
-    if (node.empty()) {
-        service =
+    if (host_ip.empty()) {
+        host_port =
             static_cast<const char *>(memchr(host.c_str(), ':', host.size()));
-        if (service) {
+        if (host_port) {
             // 没找到第二个 “:” 说明是 ipv4 的地址, 因为 ipv6 有多个 ":"
-            if (!(memchr(service + 1, ':',
-                         host.c_str() + host.size() - service - 1)))
+            if (!(memchr(host_port + 1, ':',
+                         host.c_str() + host.size() - host_port - 1)))
             {
-                node = host.substr(0, service - host.c_str());
-                ++service;
+                host_ip = host.substr(0, host_port - host.c_str());
+                ++host_port;
             }
         }
     }
 
     //  非 ipv4 和 ipv6 的点分十进制地址的话
-    if (node.empty()) {
-        node = host;
+    if (host_ip.empty()) {
+        host_ip = host;
     }
 
     addrinfo hints, *results, *next;
@@ -108,11 +110,11 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
     hints.ai_addr      = nullptr;
     hints.ai_next      = nullptr;
 
-    int error = getaddrinfo(node.c_str(), service, &hints, &results);
+    int error = getaddrinfo(host_ip.c_str(), host_port, &hints, &results);
     if (error) {
-        SYLAR_LOG_ERROR(g_logger)
+        SYLAR_LOG_DEBUG(g_logger)
             << "Address::Lookup getaddress(" << host << ", " << family << ", "
-            << type << ") err=" << error << " errstr=" << gai_strerror(errno);
+            << type << ") err=" << error << " errstr=" << gai_strerror(error);
         return false;
     }
 
@@ -127,6 +129,17 @@ bool Address::Lookup(std::vector<Address::ptr> &result, const std::string &host,
 }
 
 int Address::getFamily() const { return getAddr()->sa_family; }
+
+// 示例：自定义转换函数
+std::string Address::getFamilyToString() const {
+    int family = getFamily();
+    switch(family) {
+        case AF_INET:   return "IPv4";
+        case AF_INET6:  return "IPv6";
+        case AF_UNIX:   return "UNIX";
+        default:        return "Unknown(" + std::to_string(family) + ")";
+    }
+}
 
 std::string Address::toString()
 {
@@ -146,7 +159,7 @@ Address::ptr Address::LookupAny(const std::string &host, int family, int type,
 }
 
 IPAddress::ptr Address::LookupAnyIPAddress(const std::string &host, int family,
-                                         int type, int protocol)
+                                           int type, int protocol)
 {
     std::vector<Address::ptr> result;
     if (Lookup(result, host, family, type, protocol)) {
@@ -195,7 +208,7 @@ bool Address::GetInterFaceAddresses(
     struct ifaddrs *next, *results;
 
     if (getifaddrs(&results) != 0) {
-        SYLAR_LOG_ERROR(g_logger)
+        SYLAR_LOG_DEBUG(g_logger)
             << "Address::GetInterfaceAddress getifaddrs "
             << " err = " << errno << " errstr = " << strerror(errno);
         return false;
@@ -281,8 +294,8 @@ IPAddress::ptr IPAddress::Create(const char *address, uint16_t port)
 
     int error = getaddrinfo(address, nullptr, &hints, &results);
     if (error) {
-        SYLAR_LOG_ERROR(g_logger) << "IPAddress::Create(" << address << ", " << port
-                              << ") errstr=" << gai_strerror(error);
+        SYLAR_LOG_DEBUG(g_logger) << "IPAddress::Create(" << address << ", "
+                                  << port << ") errstr=" << gai_strerror(error);
         return nullptr;
     }
 
@@ -310,7 +323,7 @@ IPv4Address::ptr IPv4Address::Create(const char *address, uint16_t port)
 
     int result = inet_pton(AF_INET, address, &rt->m_addr.sin_addr);
     if (result <= 0) {
-        SYLAR_LOG_ERROR(g_logger)
+        SYLAR_LOG_DEBUG(g_logger)
             << "IPv4Address::Create(" << address << ", " << port
             << ") rt =" << result << " errno=" << errno
             << " errstr=" << strerror(errno);
@@ -340,7 +353,7 @@ std::ostream &IPv4Address::insert(std::ostream &os) const
     uint32_t addr = byteswapOnLittleEndian(m_addr.sin_addr.s_addr);
     os << ((addr >> 24) & 0xff) << "." /*移除低24位,保留第1字段,然后十进制输出*/
        << ((addr >> 16) & 0xff) << "." /*移除低16位,保留第2字段,然后十进制输出*/
-       << ((addr >> 8) & 0xff)  << "." /*移除低8位,保留第3字段,然后十进制输出*/
+       << ((addr >> 8) & 0xff) << "."  /*移除低8位,保留第3字段,然后十进制输出*/
        << (addr & 0xff);               /*保留第4字段, 然后十进制输出*/
 
     // 本来这里的地址是大端地址, 需要转换小端地址才可读
@@ -400,7 +413,7 @@ IPv6Address::ptr IPv6Address::Create(const char *address, uint16_t port)
     rt->m_addr.sin6_port = byteswapOnLittleEndian(port);
     int result           = inet_pton(AF_INET6, address, &rt->m_addr.sin6_addr);
     if (result <= 0) {
-        SYLAR_LOG_ERROR(g_logger)
+        SYLAR_LOG_DEBUG(g_logger)
             << "IPv6Address::Create(" << address << ", " << port
             << ") rt=" << result << " errno=" << errno
             << " errstr=" << strerror(errno);
@@ -464,7 +477,7 @@ std::ostream &IPv6Address::insert(std::ostream &os) const
         os << std::hex << (int)byteswapOnLittleEndian(addr[i]) << std::dec;
     }
 
-    if(!used_zeros && addr[7] == 0) {
+    if (!used_zeros && addr[7] == 0) {
         os << "::";
     }
 
@@ -546,10 +559,12 @@ UnixAddress::UnixAddress(const std::string &path)
 {
     memset(&m_addr, 0, sizeof(m_addr));
     m_addr.sun_family = AF_UNIX;
-    m_length          = path.size() + 1;
 
     if (!path.empty() && path[0] == '\0') {
-        --m_length;
+        // 抽象套接字不需要保存结束字符
+        m_length          = path.size() ;
+    } else {
+        m_length          = path.size() + 1;
     }
 
     if (m_length > sizeof(m_addr.sun_path)) {
@@ -562,14 +577,11 @@ UnixAddress::UnixAddress(const std::string &path)
 
 const sockaddr *UnixAddress::getAddr() const { return (sockaddr *)&m_addr; }
 
-sockaddr* UnixAddress::getAddr() { return (sockaddr*)&m_addr; }
+sockaddr *UnixAddress::getAddr() { return (sockaddr *)&m_addr; }
 
 socklen_t UnixAddress::getAddrLen() const { return m_length; }
 
-void UnixAddress::setAddrLen(uint32_t v)
-{
-    m_length = v;
-}
+void UnixAddress::setAddrLen(uint32_t v) { m_length = v; }
 
 std::ostream &UnixAddress::insert(std::ostream &os) const
 {
@@ -594,7 +606,7 @@ UnknowAddress::UnknowAddress(const sockaddr &addr) { m_addr = addr; }
 
 const sockaddr *UnknowAddress::getAddr() const { return &m_addr; }
 
-sockaddr* UnknowAddress::getAddr() { return (sockaddr*)&m_addr; }
+sockaddr *UnknowAddress::getAddr() { return (sockaddr *)&m_addr; }
 
 socklen_t UnknowAddress::getAddrLen() const { return sizeof(m_addr); }
 
@@ -604,7 +616,8 @@ std::ostream &UnknowAddress::insert(std::ostream &os) const
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Address& addr) {
+std::ostream &operator<<(std::ostream &os, const Address &addr)
+{
     return addr.insert(os);
 }
 

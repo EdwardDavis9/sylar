@@ -37,7 +37,7 @@ struct HttpResult {
 
     std::string toString() const;
 
-    int m_result;                 /**< 错误码 */
+    int m_result;                 /**< 结果 */
     HttpResponse::ptr m_response; /**< Http 响应结构体 */
     std::string m_error;          /**< 错误描述 */
 };
@@ -53,6 +53,9 @@ class HttpConnection : public SocketStream { //
   public:
     using ptr = std::shared_ptr<HttpConnection>; /**< HttpConnection 智能指针 */
 
+    /**
+     * @brief 析构函数
+     */
     ~HttpConnection();
 
     /**
@@ -160,7 +163,7 @@ class HttpConnection : public SocketStream { //
     HttpConnection(Socket::ptr sock, bool owner = true);
 
     /**
-     * @brief 析构函数
+     * @brief 响应
      */
     HttpResponse::ptr recvResponse();
 
@@ -323,7 +326,7 @@ class HttpConnectionPool {
 
     // 每个连接的最大存活时间(毫秒)
     // 超过这个时间就认为连接过期, 下次归还时会被销毁
-    uint32_t m_maxAliveTime; /**<  */
+    uint32_t m_maxAliveTime;
 
     uint32_t m_maxRequest; /**< 最大请求次数 */
 
@@ -333,7 +336,7 @@ class HttpConnectionPool {
     /// getConnection() 会从这里取一个, ReleasePtr() 会把用过的放回来
     std::list<HttpConnection *> m_conns;
 
-    std::atomic<int32_t> m_total = {0}; /**< 连接总数 */
+    std::atomic<uint32_t> m_total = {0}; /**< 连接总数 */
 };
 }; // namespace http
 }; // namespace sylar

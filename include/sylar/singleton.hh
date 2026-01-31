@@ -4,7 +4,8 @@
 
 namespace sylar {
 
-template <class T, class X = void, int N = 0> class Singleton {
+template <class T, class X = void, int N = 0>
+class Singleton {
   public:
     static T *GetInstance()
     {
@@ -13,7 +14,8 @@ template <class T, class X = void, int N = 0> class Singleton {
     }
 };
 
-template <class T, class X = void, int N = 0> class SingletonPtr {
+template <class T, class X = void, int N = 0>
+class SingletonPtr {
   public:
     static std::shared_ptr<T> GetInstance()
     {

@@ -26,8 +26,9 @@ typedef sylar::Singleton<ProcessInfo> ProcessInfoMgr;
 
 /**
  * @brief      启动程序
- * @param[in]  argc 参数个数
- * @param[out] argv 参数数组
+ * @param[in]  argc 回调函数的参数个数
+ * @param[out] argv 回调函数的参数数组
+ * @param[out] main_cb 待执行任务
  * @param[in]  is_daemon 是否是守护进程
  * @return     返回程序的执行结果
  */

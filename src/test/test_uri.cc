@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     //     sylar::http::Uri::Create("http://admin@www.sylar.top/test/中文/"
     //                              "uri?id=100&name=sylar&vv=中文#frg中文");
 
-    std::cout << uri->toString() << std::endl;
+    std::cout << uri->toString() << " " << std::to_string(uri->getPort()) << std::endl;
     auto addr = uri->createAddress();
     std::cout << *addr << std::endl;
     return 0;

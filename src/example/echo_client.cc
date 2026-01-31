@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 int main() {
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    int sockfd = socket(PF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket");
         return 1;

@@ -78,7 +78,7 @@ class ServletFunction : public Servlet {
 };
 
 /**
- * @brief Servlet分发器
+ * @brief Servlet 分发器
  */
 class ServletDispatcher : public Servlet {
   public:
@@ -92,7 +92,7 @@ class ServletDispatcher : public Servlet {
     ServletDispatcher();
 
     /**
-     * @brief     添加 servlet
+     * @brief     处理 servlet
      * @param[in] uri uri
      * @param[in] slt serlvet
      */

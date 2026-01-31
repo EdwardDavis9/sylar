@@ -20,33 +20,35 @@ void fun1() {
 }
 
 void fun2() {
-	while(true) {
-		SYLAR_LOG_INFO(g_logger) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+	int i = 0;
+	while(++i < 10) {
+		SYLAR_LOG_INFO(g_logger) << i << "+++++xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 	}
 }
 
 void fun3() {
-	while(true) {
-		SYLAR_LOG_INFO(g_logger) << "==================================";
+	int i = 0;
+	while(++i < 10) {
+		SYLAR_LOG_INFO(g_logger) << i << "-----xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 	}
 }
 
 int main(int argc, char* argv[]) {
 	SYLAR_LOG_INFO(g_logger) << "thread test begin";
 
-	YAML::Node root = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
+	// YAML::Node root = YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml.bak");
 
 
-	sylar::Config::LoadFromYaml(root);
+	// sylar::Config::LoadFromYaml(root);
 
 	std::vector<sylar::Thread::ptr> thrs;
 
 	for(int i = 0; i < 1; ++i) {
-		sylar::Thread::ptr thr(new sylar::Thread(&fun2,  "name_" + std::to_string(i*2)));
-		// sylar::Thread::ptr thr2(new sylar::Thread(&fun3, "name_"+std::to_string(i * 2 + 1)));
+		sylar::Thread::ptr thr(new sylar::Thread(&fun2,  "name_"));
+		sylar::Thread::ptr thr2(new sylar::Thread(&fun3, "name_"));
 
 		thrs.push_back(thr);
-		// thrs.push_back(thr2);
+		thrs.push_back(thr2);
 	}
 
 	for(size_t i = 0; i < thrs.size(); ++i) {

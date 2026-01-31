@@ -1,0 +1,33 @@
+epollin = 1 epollout = 4
+2025-12-06 12:28:06	1858943	main	0	[DEBUG]	[root]	fiber.cc:46	Fiber::Fiber  id = 0
+2025-12-06 12:28:06	1858943	main	1	[DEBUG]	[root]	fiber.cc:78	Fiber::Fiber  id = 1
+2025-12-06 12:28:06	1858944	Thread_1	0	[INFO]	[root]	scheduler.cc:164	run
+2025-12-06 12:28:06	1858944	Thread_1	2	[DEBUG]	[root]	fiber.cc:46	Fiber::Fiber  id = 2
+2025-12-06 12:28:06	1858943	main	1	[INFO]	[root]	scheduler.cc:164	run
+2025-12-06 12:28:06	1858944	Thread_1	3	[DEBUG]	[root]	fiber.cc:78	Fiber::Fiber  id = 3
+2025-12-06 12:28:06	1858943	main	4	[DEBUG]	[root]	fiber.cc:78	Fiber::Fiber  id = 4
+2025-12-06 12:28:06	1858944	Thread_1	5	[DEBUG]	[root]	fiber.cc:78	Fiber::Fiber  id = 5
+2025-12-06 12:28:06	1858943	main	6	[DEBUG]	[root]	fiber.cc:78	Fiber::Fiber  id = 6
+2025-12-06 12:28:06	1858944	Thread_1	5	[INFO]	[root]	test_iomanager.cc:26	test_fiber sock= 0
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:26	test_fiber sock= 0
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:40	 add event errno=115 Operation now in progress
+2025-12-06 12:28:06	1858944	Thread_1	5	[INFO]	[root]	test_iomanager.cc:40	 add event errno=115 Operation now in progress
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:59	end test_fiber
+2025-12-06 12:28:06	1858944	Thread_1	5	[INFO]	[root]	test_iomanager.cc:59	end test_fiber
+2025-12-06 12:28:06	1858943	main	4	[DEBUG]	[root]	iomanager.cc:326	idle
+2025-12-06 12:28:06	1858944	Thread_1	3	[DEBUG]	[root]	iomanager.cc:326	idle
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:44	read callback
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:49	write callback
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:44	read callback
+2025-12-06 12:28:06	1858943	main	6	[INFO]	[root]	test_iomanager.cc:49	write callback
+2025-12-06 12:28:06	1858943	main	4	[INFO]	[root]	iomanager.cc:334	name= idle stopping exit
+2025-12-06 12:28:06	1858943	main	1	[INFO]	[root]	scheduler.cc:283	idle fiber term
+2025-12-06 12:28:06	1858943	main	6	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 6
+2025-12-06 12:28:06	1858943	main	4	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 4
+2025-12-06 12:28:09	1858944	Thread_1	3	[INFO]	[root]	iomanager.cc:334	name= idle stopping exit
+2025-12-06 12:28:09	1858944	Thread_1	2	[INFO]	[root]	scheduler.cc:283	idle fiber term
+2025-12-06 12:28:09	1858944	Thread_1	5	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 5
+2025-12-06 12:28:09	1858944	Thread_1	3	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 3
+2025-12-06 12:28:09	1858944	Thread_1	2	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 2
+2025-12-06 12:28:09	1858943	main	1	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 1
+2025-12-06 12:28:09	1858943	main	0	[DEBUG]	[root]	fiber.cc:100	Fiber::~Fiber id = 0

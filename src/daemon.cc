@@ -32,13 +32,15 @@ static int real_start(int argc, char **argv,
 static int real_daemon(int argc, char **argv,
                        std::function<int(int argc, char **argv)> main_cb)
 {
-
     // 注释下面用来测试非守护进程，只用来测试 fork 的行为
-    daemon(1, 0); // 守护进程的情形
+    // 守护进程的情形
+    daemon(1, 0);
     ProcessInfoMgr::GetInstance()->parent_id         = getpid();
     ProcessInfoMgr::GetInstance()->parent_start_time = time(0);
     while (true) {
         pid_t pid = fork();
+
+        ProcessInfoMgr::GetInstance()->toString();
 
         if (pid == 0) {
             ProcessInfoMgr::GetInstance()->main_id         = getpid();

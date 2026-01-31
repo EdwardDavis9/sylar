@@ -13,8 +13,8 @@ auto Env::init(int argc, char **argv) -> bool
 {
     char link[1024] = {0};
     char path[1024] = {0};
-    sprintf(link, "/proc/%d/exe", getpid()); //拼接出内核中的链接路径
-    readlink(link, path, sizeof(path)); // 获得内核中链接对应的实际路径
+    sprintf(link, "/proc/%d/exe", getpid()); // 拼接出内核中的链接路径
+    readlink(link, path, sizeof(path));      // 获得内核中链接对应的实际路径
 
     m_exe = path;
 
@@ -30,7 +30,9 @@ auto Env::init(int argc, char **argv) -> bool
                 if (now_key) {
                     add(now_key, ""); // 保存上一轮的参数
                 }
-                now_key = argv[i] + 1;
+                // 例如 -f a.txt
+                now_key =
+                    argv[i] + 1; // 只保存键名，不保存符号, 跳过第一个非字母
             }
             else {
                 SYLAR_LOG_ERROR(g_logger)
@@ -55,7 +57,17 @@ auto Env::init(int argc, char **argv) -> bool
         add(now_key, "");
     }
 
+    if (argsIsEmpty()) {
+        printHelp();
+    }
+
     return true;
+}
+
+auto Env::argsIsEmpty() -> bool
+{
+    RWMutexType::ReadLock lock(m_mutex);
+    return m_args.empty();
 }
 
 auto Env::add(const std::string &key, const std::string &val) -> void
@@ -82,7 +94,7 @@ auto Env::get(const std::string &key, const std::string &default_value)
 {
     RWMutexType::WriteLock lock(m_mutex);
     auto it = m_args.find(key);
-    return it == m_args.end() ? it->second : default_value;
+    return it != m_args.end() ? it->second : default_value;
 }
 
 auto Env::addHelp(const std::string &key, const std::string &desc) -> void
@@ -128,6 +140,17 @@ auto Env::getEnv(const std::string &key, const std::string &default_value)
         return default_value;
     }
     return v;
+}
+
+auto Env::getAbsolutePath(const std::string &path) const -> std::string
+{
+    if (path.empty()) {
+        return "/";
+    }
+    if (path[0] == '/') {
+        return path;
+    }
+    return m_cwd + path;
 }
 
 }; // namespace sylar

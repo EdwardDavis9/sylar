@@ -10,17 +10,20 @@
 #include "sylar/config.hh"
 #include <time.h>
 
+#include "sylar/util.hh"
+#include "sylar/macro.hh"
+#include "sylar/env.hh"
+
 namespace sylar {
 
 const char *LogLevel::ToString(LogLevel::Level level)
 {
-    switch (level) {
-
 #define XX(name)         \
     case LogLevel::name: \
         return #name;    \
         break;
 
+    switch (level) {
         XX(DEBUG);
         XX(INFO);
         XX(WARN);
@@ -40,7 +43,7 @@ LogLevel::Level LogLevel::FromString(const std::string &str)
         return LogLevel::level; \
     }
 
- XX(DEBUG, debug);
+    XX(DEBUG, debug);
     XX(INFO, info);
     XX(WARN, warn);
     XX(ERROR, error);
@@ -52,16 +55,17 @@ LogLevel::Level LogLevel::FromString(const std::string &str)
     XX(ERROR, ERROR);
     XX(FATAL, FATAL);
 
-    return LogLevel::UNKNOW;
 #undef XX
+    return LogLevel::UNKNOW;
 }
 
-LogEventWrap::LogEventWrap(LogEvent::ptr e) : m_event(e) {}
+LogEventWrap::LogEventWrap(Logger::ptr logger, LogEvent::ptr e)
+    : m_logger(logger), m_event(e)
+{}
 
 LogEventWrap::~LogEventWrap()
 {
-    // m_event->getLogger()->log(m_event->getLevel(), m_event);
-    getEvent()->getLogger()->log(m_event->getLevel(), m_event);
+    getLogger()->log(m_event->getLevel(), m_event);
 }
 
 void LogEvent::format(const char *fmt, ...)
@@ -118,6 +122,7 @@ void Logger::initFormatter()
 
 void Logger::setFormatter(LogFormatter::ptr var)
 {
+    // std::cout << "---" << var << std::endl;
     MutexType::Lock lock(m_mutex);
     m_formatter = var;
     for (auto &i : m_appenders) {
@@ -274,9 +279,10 @@ bool FileLogAppender::reopen()
     if (m_filestream) {
         m_filestream.close();
     }
-    m_filestream.open(m_filename, std::ios::app); // 追加方式打开文件
 
-    return !!m_filestream;
+    // m_filestream.open(m_filename, std::ios::app); // 追加方式打开文件
+    // return !!m_filestream;
+    return FSUtil::OpenForWrite(m_filestream, m_filename, std::ios::app);
 }
 
 FileLogAppender::FileLogAppender(const std::string &filename)
@@ -289,16 +295,19 @@ void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level,
                           LogEvent::ptr event)
 {
     if (level >= m_level) { // 事件的日志级别 是否大于 输出器的 默认级别
-        uint64_t now = time(0);
+        // uint64_t now = time(0);
+        uint64_t now = event->getTime();
 
         // 为避免在输出内容时, 文件被删除, 这里每次在输出前都 ropen
-        if (now != m_lastTime) {
+        // if (now != m_lastTime) {
+        if (now >= (m_lastTime + 3)) {
             reopen();
             m_lastTime = now;
         }
 
         MutexType::Lock lock(m_mutex);
-        if (!(m_filestream << m_formatter->format(logger, level, event))) {
+        // if (!(m_filestream << m_formatter->format(logger, level, event))) {
+        if (!m_formatter->format(m_filestream, logger, level, event)) {
             std::cout << "error " << std::endl;
         }
     }
@@ -312,7 +321,8 @@ void StdoutLogAppender::log(std::shared_ptr<Logger> logger,
     // 但是否输出, 还依赖于输出器的输出级别
     if (level >= m_level) { // 事件的日志级别 是否大于 当前输出器的默认输出级别
         MutexType::Lock lock(m_mutex);
-        std::cout << m_formatter->format(logger, level, event);
+        // std::cout << m_formatter->format(logger, level, event);
+        m_formatter->format(std::cout, logger, level, event);
     }
 }
 
@@ -471,8 +481,8 @@ class NameFormatItem : public LogFormatter::FormatItem {
     void format(std::ostream &os, Logger::ptr logger, LogLevel::Level level,
                 LogEvent::ptr event) override
     {
-        // os << logger->getName();
-        os << event->getLogger()->getName();
+        os << logger->getName();
+        // os << event->getLogger()->getName();
     }
 };
 
@@ -523,111 +533,112 @@ class StringFormatItem : public LogFormatter::FormatItem {
     std::string m_string;
 };
 
+std::ostream &LogFormatter::format(std::ostream &ofs,
+                                   std::shared_ptr<Logger> logger,
+                                   LogLevel::Level level, LogEvent::ptr event)
+{
+    for (auto &i : m_items) {
+        i->format(ofs, logger, level, event);
+    }
+    return ofs;
+}
+
 void LogFormatter::init()
 {
-    // str, format, type
+    // str, format, type: 输出时的实际顺序
     std::vector<std::tuple<std::string, std::string, int>> vec;
-    std::string nstr; // 普通字符
+    std::string nstr; // 普通字符, 如中括号大括号等
 
     for (size_t i = 0; i < m_pattern.size(); ++i) {
         if (m_pattern[i] != '%') {
             nstr.append(1, m_pattern[i]);
             continue;
         }
+        else { // 只有在当前字符是 % 时, 才会进行存储
 
-        // 避免出现多个 %
-        if ((i + 1) < m_pattern.size()) {
-            if (m_pattern[i + 1] == '%') {
-                nstr.append(1, '%');
-                continue;
-            }
-        }
-
-        size_t n         = i + 1; // 占位符解析指针
-        int fmt_status   = 0;     // 0 普通占位符, 1 花括号占位符
-        size_t fmt_begin = 0;     // 花括号开始的位置
-
-        std::string str; // 占位符名称, 如 %d{%Y-%m-%d} 中的第一个出现的 d
-        std::string fmt; // 占位格式, 如 %d{%Y-%m-%d} 中的 %Y-%m-%d
-        while (n < m_pattern.size()) {
-
-            // 分段解析的关键, 如果不在花括号中, 遇到非字母和非{}字符,
-            // 结束占位符解析
-            if (!fmt_status
-                && (!isalpha(m_pattern[n]) && m_pattern[n] != '{'
-                    && m_pattern[n] != '}'))
-            {
-                // i 是 % 的位置, 将 % 后面的字符截取到 str 中
-                str = m_pattern.substr(i + 1, n - i - 1);
-                break;
-            }
-
-            // 说明这个占位符带格式, 例如: %d{%Y-%m-%d}
-            if (fmt_status == 0) {
-                if (m_pattern[n] == '{') {
-                    str        = m_pattern.substr(i + 1, n - i - 1);
-                    fmt_status = 1;
-                    fmt_begin  = n;
-                    ++n;
+            // 避免出现多个 %
+            if ((i + 1) < m_pattern.size()) {
+                if (m_pattern[i + 1] == '%') {
+                    nstr.append(1, '%');
                     continue;
-                    // 当前内容已经解析，接下来自动移动指针并且进入下次循环
                 }
             }
 
-            // 格式部分结束
-            else if (fmt_status == 1) {
-                if (m_pattern[n] == '}') {
-                    fmt = m_pattern.substr(fmt_begin + 1, n - fmt_begin - 1);
-                    fmt_status = 0;
-                    ++n;
+            size_t n         = i + 1; // 占位符解析指针
+            int fmt_status   = 0;     // 0 普通占位符, 1 花括号占位符
+            size_t fmt_begin = 0;     // 花括号开始的位置
+
+            std::string str; // 占位符名称, 如 %d{%Y-%m-%d} 中的第一个出现的 d
+            std::string fmt; // 占位格式, 如 %d{%Y-%m-%d} 中的 %Y-%m-%d
+            while (n < m_pattern.size()) {
+
+                // 出现标记字符了, 因此只记录当前内容, 然后终止本轮的 while 解析
+                // 分段解析的关键, 如果不在花括号中, 遇到非字母和非{}字符,
+                // 结束占位符解析
+                if (!fmt_status
+                    && (!isalpha(m_pattern[n]) && m_pattern[n] != '{'
+                        && m_pattern[n] != '}'))
+                {
+                    // i 是 % 的位置, 将 % 后面的字符截取到 str 中
+                    str = m_pattern.substr(i + 1, n - i - 1);
                     break;
-                    // 当前内容已经解析，接下来自动移动指针并且停止本轮循环
+                }
+
+                // 说明这个占位符带格式, 例如: %d{%Y-%m-%d}
+                // 因此需要在进入格式解析前, 提前存储一些字段
+                if (fmt_status == 0) {
+                    if (m_pattern[n] == '{') {
+                        str        = m_pattern.substr(i + 1, n - i - 1);
+                        fmt_status = 1;
+                        fmt_begin  = n;
+                        ++n;
+                        continue;
+                    }
+                }
+
+                // 格式部分结束, 记录出现的参数字段
+                else if (fmt_status == 1) {
+                    if (m_pattern[n] == '}') {
+                        fmt =
+                            m_pattern.substr(fmt_begin + 1, n - fmt_begin - 1);
+                        fmt_status = 0;
+                        ++n;
+                        break;
+                    }
+                }
+                ++n; // 自增到下一个未解析的位置
+
+                // 说明当前的格式不带参数, 记录所有内容
+                if (n == m_pattern.size()) {
+                    if (str.empty()) {
+                        str = m_pattern.substr(i + 1);
+                    }
                 }
             }
-            ++n; // 自增到下一个未解析的位置
-
-            // 说明当前的格式不带参数, 记录所有内容
-            if (n == m_pattern.size()) {
-                if (str.empty()) {
-                    str = m_pattern.substr(i + 1);
+            if (fmt_status == 0) {
+                if (!nstr.empty()) {
+                    // 如果存在普通字符串, 那么先存放普通字符串
+                    vec.push_back(std::make_tuple(nstr, "", 0));
+                    nstr.clear();
                 }
-            }
-        }
-        if (fmt_status == 0) {
-            if (!nstr.empty()) {
-                // 如果存在普通字符串，那么先存放普通字符串
-                vec.push_back(std::make_tuple(nstr, "", 0));
-                nstr.clear();
-            }
 
-            // 接下来存放格式以及参数字符串
-            vec.push_back(std::make_tuple(str, fmt, 1));
-            i = n - 1; // 恢复到上一个解析字符串的末尾, for 会自己自增 i 的
-        }
-        else if (fmt_status == 1) {
-            std::cout << "pattern parse error: " << m_pattern << " - "
-                      << m_pattern.substr(i) << std::endl;
-            m_error = true;
-            vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
+                // 接下来存放格式以及参数字符串
+                vec.push_back(std::make_tuple(str, fmt, 1));
+                i = n - 1; // 恢复到上一个解析字符串的末尾, for 会自己自增 i 的
+            }
+            else if (fmt_status == 1) {
+                std::cout << "pattern parse error: " << m_pattern << " - "
+                          << m_pattern.substr(i) << std::endl;
+                m_error = true;
+                vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
+            }
         }
     }
 
+    // 防止只有普通字符, 没有 % 字符的情况
     if (!nstr.empty()) {
         vec.push_back(std::make_tuple(nstr, "", 0));
     }
-
-    //%m --消息体
-    //%p -- level
-    //%r -- 启动后的时间
-    //%c -- 日志名称
-    //%t -- 线程id
-    //%n -- 回车换行
-    //%d -- 时间
-    //%f -- 文件名
-    //%l -- 行号
-    static std::map<std::string,
-                    std::function<FormatItem::ptr(const std::string &str)>>
-        s_format_items = {
 
 #define XX(str, C)                                                             \
     {                                                                          \
@@ -635,6 +646,9 @@ void LogFormatter::init()
             [](const std::string &fmt) { return FormatItem::ptr(new C(fmt)); } \
     }
 
+    static std::map<std::string,
+                    std::function<FormatItem::ptr(const std::string &str)>>
+        s_format_items = {
             XX(m, MessageFormatItem),    // m:消息
             XX(p, LevelFormatItem),      // p:日志级别
             XX(r, ElapseFormatItem),     // r:累计毫秒数
@@ -647,9 +661,8 @@ void LogFormatter::init()
             XX(T, TabFormatItem),        // T:Tab
             XX(F, FiberIdFormatItem),    // F:协程id
             XX(N, ThreadNameFormatItem), // N:线程名称
-
-#undef XX
         };
+#undef XX
 
     for (auto &i : vec) {
         if (std::get<2>(i) == 0) {
@@ -672,13 +685,12 @@ void LogFormatter::init()
     }
 }
 
-LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
-                   const char *file, int32_t line, uint32_t elapse,
-                   uint32_t thread_id, uint32_t fiber_id, uint64_t time,
-                   const std::string &thread_name)
+LogEvent::LogEvent(LogLevel::Level level, const char *file, int32_t line,
+                   uint32_t elapse, uint32_t thread_id, uint32_t fiber_id,
+                   uint64_t time, const std::string &thread_name)
     : m_file(file), m_line(line), m_elapse(elapse), m_threadId(thread_id),
       m_fiberId(fiber_id), m_time(time), m_threadName(thread_name),
-      m_logger(logger), m_level(level)
+      m_level(level)
 {}
 
 Logger::ptr LoggerManager::getLogger(const std::string &name)
@@ -876,7 +888,13 @@ struct LogIniter {
                         ap.reset(new FileLogAppender(a.file));
                     }
                     else if (a.type == 2) {
-                        ap.reset(new StdoutLogAppender);
+                        // ap.reset(new StdoutLogAppender);
+                        if (!sylar::EnvMgr::GetInstance()->has("d")) {
+                            ap.reset(new StdoutLogAppender);
+                        }
+                        else {
+                            continue;
+                        }
                     }
                     ap->setLevel(a.level);
                     if (!a.formatter.empty()) {
@@ -930,10 +948,6 @@ LoggerManager::LoggerManager()
     m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
 
     m_loggers[m_root->m_name] = m_root;
-
-    init();
 }
-
-void LoggerManager::init() {}
 
 } // namespace sylar

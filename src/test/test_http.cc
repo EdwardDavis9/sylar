@@ -6,7 +6,7 @@ void test_request() {
 	req->setHeader("host", "www.bilibili.com");
 	req->setBody("hello sylar");
 	// req->dump(std::cout) << std::endl;
-	std::cout << req->toString();
+	std::cout << req->toString() << std::endl;
 }
 
 void test_response() {
@@ -16,7 +16,8 @@ void test_response() {
 	rsp->setStatus((sylar::http::HttpStatus)400);
 	rsp->setClose(true);
 
-	rsp->dump(std::cout) << std::endl;
+	// rsp->dump(std::cout) << std::endl;
+	std::cout << rsp->toString() << std::endl;
 }
 
 int main() {

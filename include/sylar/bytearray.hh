@@ -396,10 +396,19 @@ class ByteArray {
      * @brief         从 m_cur 中读取 size 长度的数据 const
      * @param[in,out] buff 内存缓存指针
      * @param[in]     size 数据大小
-     * @param[in]     position 读取开始位置
      * @exception     如果 (m_size - position) < size 则抛出 std::out_of_range
      */
-    void read(void *buf, size_t size, size_t position) const;
+    void readForPeek(void *buf, size_t size) const;
+
+
+    /**
+     * @brief         从 m_cur 中读取 size 长度的数据 const
+     * @param[in,out] buff 内存缓存指针
+     * @param[in]     size 数据大小
+     * @param[in]     position 开始读取的一个全局的位置
+     * @exception     如果 (m_size - position) < size 则抛出 std::out_of_range
+     */
+    void readForPeekAt(void *buf, size_t size, size_t position) const;
 
     /**
      * @brief 返回 ByteArray 当前位置
@@ -430,10 +439,10 @@ class ByteArray {
      */
     size_t getBaseSize() const { return m_baseSize; }
 
-    /**
-     * @brief 返回可读取数据大小
-     */
-    size_t getReadSize() const { return m_size - m_position; }
+    // /**
+    //  * @brief 返回可读取数据大小
+    //  */
+    // size_t getSizeForRead() const { return m_size - m_position; }
 
     /**
      * @brief 是否是小端
@@ -475,7 +484,8 @@ class ByteArray {
      * @param[in]     position 读取数据的位置
      * @return        返回实际的数据长度
      */
-    uint64_t getReadBuffers(std::vector<iovec> &buffers, uint64_t len,
+    uint64_t getReadBuffersAt(std::vector<iovec> &buffers,
+                            uint64_t len,
                             uint64_t position) const;
 
     /**
@@ -492,22 +502,36 @@ class ByteArray {
      */
     size_t getSize() const { return m_size; }
 
+    /**
+     * @brief 获取当前的可写入容量
+     */
+    size_t getSizeForWrite() const { return m_capacity - m_position; }
+
+    /**
+     * @brief 返回可读取数据大小
+     */
+    size_t getSizeForRead() const { return m_position > m_size ? 0 : m_size - m_position; }
+
+    /**
+     * @brief 获取当前剩余可用的物理容量
+     */
+    size_t getSizeForAllFreeCapacity() const { return m_capacity - m_size; }
+
+
+    size_t getNodeCount() const;
+
   private:
     /**
      * @brief 只会在容量不够的情况下, 去扩容 ByteAyyar, 使其可容纳 size 个数据
      */
-    void addCapacity(size_t size);
+    void addCapacityIfNeeded(size_t ensureCapcity);
 
-    /**
-     * @brief 获取当前的可写入容量
-     */
-    size_t getCapacity() const { return m_capacity - m_position; }
 
   private:
     size_t m_baseSize; /**< 每个 Node 的默认大小 */
     size_t m_position; /**< 当前操作位置 */
     size_t m_capacity; /**< 当前分配的总容量(可以写入的最大数据量) */
-    size_t m_size;     /**< 当前数据的大小 */
+    size_t m_size;     /**< 当前写入数据的总大小 */
     size_t m_endian;   /**< 字节序, 默认大端 */
 
     Node *m_root; /**< 第一个内存块指针 */

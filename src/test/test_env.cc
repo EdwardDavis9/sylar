@@ -7,6 +7,7 @@
 
 struct A {
     A() {
+				std::cout << "begin---------------------------------------------------" << std::endl;
         std::ifstream ifs("/proc/" + std::to_string(getpid()) + "/cmdline", std::ios::binary);
         std::string content;
         content.resize(4096);
@@ -17,6 +18,8 @@ struct A {
         for(size_t i = 0; i < content.size(); ++i) {
             std::cout << i << " - " << content[i] << " - " << (int)content[i] << std::endl;
         }
+
+				std::cout << "end---------------------------------------------------" << std::endl;
     }
 };
 
@@ -29,6 +32,7 @@ int main(int argc, char *argv[]) {
 		sylar::EnvMgr::GetInstance()->addHelp("d", "run as daemon");
 		sylar::EnvMgr::GetInstance()->addHelp("p", "print help");
 
+		// 出错导致提前返回，因此需要printHelp
 		if(!sylar::EnvMgr::GetInstance()->init(argc, argv)) {
 				sylar::EnvMgr::GetInstance()->printHelp();
 				return 0;

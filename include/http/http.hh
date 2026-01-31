@@ -446,7 +446,7 @@ class HttpRequest {
      * @return     如果存在且转换成功返回 true,否则失败 val=def
      */
     template <class T>
-    bool chechGetHeaderAs(const std::string &key, T &val, const T &def = T())
+    bool checkGetHeaderAs(const std::string &key, T &val, const T &def = T())
     {
         return checkGetAs(m_headers, key, val, def);
     }
@@ -495,12 +495,12 @@ class HttpRequest {
     uint8_t m_version;      /**< HTTP 版本 */
     HttpMethod m_method;    /**< HTTP 方法 */
     std::string m_path;     /**< 请求路径 */
-    std::string m_query;    /**< 请求参数 */
+    std::string m_query;    /**< 原始查询字符串 */
     std::string m_body;     /**< 请求体 */
     std::string m_fragment; /**< 请求 fragment */
 
-    MapType m_headers; /**< 请求头 */
-    MapType m_params;  /**< 请求参数 */
+    MapType m_headers; /**< 请求头部字段 */
+    MapType m_params;  /**< 查询参数解析后的参数键值对 */
     MapType m_cookies; /**< 请求 COOKIE */
 };
 
@@ -650,7 +650,7 @@ class HttpResponse {
     std::string toString() const;
 
   private:
-    HttpStatus m_status;  /**< 响应状态 */
+    HttpStatus m_status;  /**< 响应码 */
     uint8_t m_version;    /**< 版本 */
     bool m_close;         /**< 是否自动关闭 */
     std::string m_body;   /**< 响应体 */

@@ -52,7 +52,7 @@ void run()
             }
             else {
                 SYLAR_LOG_INFO(g_logger) << "send " << line << " len:" << len
-                                         << ". please wait it...";
+                                         << ".please wait it...";
                 sleep(1);
             }
         }

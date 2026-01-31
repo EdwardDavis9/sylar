@@ -20,9 +20,9 @@
 // 当前的日志级别必须大于日志器的日志级别才会构建原子日志
 #define SYLAR_LOG_LEVEL(logger, level)                                  \
     if (logger->getLevel() <= level)                                    \
-    sylar::LogEventWrap(                                                \
+    sylar::LogEventWrap(logger,                                         \
         sylar::LogEvent::ptr(new sylar::LogEvent(                       \
-            logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
+            level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
             sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
         .getSS()
 
@@ -40,8 +40,8 @@
 #define SYLAR_LOG_FMT_LEVEL(logger, level, fmt, ...)                    \
     if (logger->getLevel() <= level)                                    \
     sylar::LogEventWrap(                                                \
-        sylar::LogEvent::ptr(new sylar::LogEvent(                       \
-            logger, level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
+        sylar::LogEvent::ptr(logger,new sylar::LogEvent(                \
+            level, __FILE__, __LINE__, 0, sylar::GetThreadId(),         \
             sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
         .getEvent()                                                     \
         ->format(fmt, __VA_ARGS__)
@@ -96,7 +96,17 @@ class LogEvent {
     /**
      * @brief 构造日志事件
      */
-    LogEvent(std::shared_ptr<Logger> logger,
+    // LogEvent(std::shared_ptr<Logger> logger,
+    //          LogLevel::Level level,
+    //          const char *file,
+    //          int32_t line,
+    //          uint32_t elapse,
+    //          uint32_t thread_id,
+    //          uint32_t fiber_id,
+    //          uint64_t time,
+    //          const std::string &thread_name);
+
+    LogEvent(
              LogLevel::Level level,
              const char *file,
              int32_t line,
@@ -162,20 +172,6 @@ class LogEvent {
     LogLevel::Level m_level;          /**< Log的等级 */
 };
 
-/**
- * @class   LogEventWrap 日志事件输出包装类
- * @details RAII
- */
-class LogEventWrap {
-  public:
-    LogEventWrap(LogEvent::ptr e);
-    ~LogEventWrap();
-    LogEvent::ptr getEvent() const { return m_event; }
-    std::stringstream &getSS();
-
-  private:
-    LogEvent::ptr m_event;
-};
 
 /**
  * @class 日志格式器
@@ -219,6 +215,11 @@ class LogFormatter {
 
     bool isError() const { return m_error; }
     const std::string getPatrtern() const { return m_pattern; }
+
+    std::ostream &format(std::ostream &ofs,
+                         std::shared_ptr<Logger> logger,
+                         LogLevel::Level level,
+                         LogEvent::ptr event);
 
   private:
     std::string m_pattern;
@@ -315,7 +316,23 @@ class Logger : public std::enable_shared_from_this<Logger> {
     std::list<LogAppender::ptr> m_appenders; /**< 输出器集合 */
     LogFormatter::ptr m_formatter;           /**< 日志器所属的格式解析器 */
     Logger::ptr m_root;                      /**<  root 指针*/
-    MutexType m_mutex;                      /**< 系统层面上的自旋锁 */
+    MutexType m_mutex;                       /**< 系统层面上的自旋锁 */
+};
+
+/**
+ * @class   LogEventWrap 日志事件输出包装类
+ * @details RAII
+ */
+class LogEventWrap {
+  public:
+    LogEventWrap(Logger::ptr logger, LogEvent::ptr e);
+    ~LogEventWrap();
+    Logger::ptr getLogger() const { return m_logger; }
+    std::stringstream &getSS();
+
+  private:
+    Logger::ptr m_logger;
+    LogEvent::ptr m_event;
 };
 
 /**
@@ -367,8 +384,6 @@ class LoggerManager {
     LoggerManager();
 
     Logger::ptr getLogger(const std::string &name);
-
-    void init();
 
     /**
      * @brief  返回当前管理器的根指针

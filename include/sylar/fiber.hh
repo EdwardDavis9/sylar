@@ -30,9 +30,9 @@ friend class Scheduler;
      * @brief     构造函数
      * @param[in] cb 协程执行的函数
      * @param[in] stacksize 协程栈大小
-     * @param[in] use_caller 是否在MainFiber上调度
+     * @param[in] return_to_mainFiber 是否在MainFiber上调度
      */
-    Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
+    Fiber(std::function<void()> cb, size_t stacksize = 0, bool return_to_mainFiber = false);
 	~Fiber();
 
 	// 重置协程相关内容
@@ -103,13 +103,13 @@ friend class Scheduler;
 	 * @berif 协程执行函数
 	 * @post  执行完成后, 回到线程主协程
 	 */
-	static void MainFunc();
+	static void SchedulerFiberFunc();
 
   /**
 	 * @berif 协程执行函数
 	 * @post  执行完成后, 回到线程调度协程
 	 */
-	static void CallerMainFunc();
+	static void MainFiberFunc();
 
   private:
     Fiber();

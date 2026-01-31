@@ -149,7 +149,7 @@ namespace http {
 		m_parser.http_version = on_request_version;
 		m_parser.header_done = on_request_header_done;
 		m_parser.http_field = on_request_http_field;
-		m_parser.data = this;
+		m_parser.data = this; // 让回调后的函数能访问到当前包装类
 	}
 
 	uint64_t HttpRequestParser::getContentLength() {

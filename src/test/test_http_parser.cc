@@ -33,7 +33,9 @@ void test_request() {
 		<<" conten_legth=" <<parser.getContentLength();
 	tmp.resize(tmp.size() - s);
 
-	SYLAR_LOG_INFO(g_logger) << test_request_data;
+	SYLAR_LOG_INFO(g_logger) << "test_request_data";
+	std::cout << test_request_data << std::endl;
+	SYLAR_LOG_INFO(g_logger) << "--------------------------";
 	SYLAR_LOG_INFO(g_logger) << parser.getData()->toString();
 	SYLAR_LOG_INFO(g_logger) << tmp;
 }

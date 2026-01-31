@@ -112,10 +112,10 @@ class LexicalCast<std::string, std::vector<T>> {
     std::vector<T> operator()(const std::string &v)
     {
         YAML::Node node = YAML::Load(v);
-        // typename std::vector<T> vec;
         typename std::vector<T> vec;
         std::stringstream ss;
 
+        // 遍历所有的 node 节点，然后依次追加到目标类型中
         // 写入 stringstream 中, 然后 push_back 进 vec 中
         for (size_t i = 0; i < node.size(); ++i) {
             ss.str("");
@@ -531,7 +531,6 @@ class Config {
 
         // 创建一个配置实例类
         typename ConfigVar<T>::ptr v(
-            // new ConfigVar<T>(name, default_value, description));
             std::make_shared<ConfigVar<T>>(name, default_value, description));
 
         // 增加一个键值对: name:ConfiVar
@@ -556,10 +555,15 @@ class Config {
 
     /**
     * @brief     从yaml文件中加载配置
-    * @details   Description
     * @param[in] root Description
     */
     static void LoadFromYaml(const YAML::Node &root);
+
+    /**
+     * @brief     加载 path 文件夹内的配置文件
+     * @param[in] path 加载的路径
+     */
+    static void LoadFromConfDir(const std::string& path);
 
     /**
     * @brief     从底层的存储结构中查找指定字符串

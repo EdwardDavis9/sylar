@@ -7,7 +7,7 @@ namespace sylar {
 static std::atomic<uint64_t> s_thread_count{0};
 
 static thread_local Thread *t_thread          = nullptr;
-static thread_local std::string t_thread_name = "Thread_1";
+static thread_local std::string t_thread_name = "main-thread";
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
@@ -67,7 +67,7 @@ Thread::Thread(std::function<void()> cb, const std::string &name)
 Thread::~Thread()
 {
     if (m_thread) {
-        // 分离线程
+        // 如何没有主动 join 回收的话, 那么需要分离线程
         pthread_detach(m_thread);
         s_thread_count--;
     }

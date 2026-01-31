@@ -29,11 +29,11 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     /**
      * @brief     构造函数
      * @param[in] threads 线程数量
-     * @param[in] use_caller 是否使用当前调用线程
+     * @param[in] include_caller_thread 当前调用线程也参与执行任务
      * @param[in] name 协程调度器名称
      */
     Scheduler(size_t threads = 1,
-			  bool use_caller = true,
+			  bool include_caller_thread = true,
 			  const std::string& name= "");
 
 
@@ -48,7 +48,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 	void start();
 
   /**
-   * @brief 停止协程调度器
+   * @brief 停止协程调度器, 并且会进行终止前的任务检测
    */
 	void stop();
 

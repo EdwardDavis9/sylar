@@ -32,6 +32,32 @@ uint64_t GetCurrentUS();
 std::string Time2Str(time_t ts                 = time(0),
                      const std::string &format = "%Y-%m-%d %H:%M:%S");
 
+class FSUtil {
+  public:
+    static void ListAllFile(std::vector<std::string> &files,
+                            const std::string &path,
+                            const std::string &subfix);
+
+    static bool MKDir(const std::string &dirname);
+
+    static bool ISRunningPidFile(const std::string &pidfile);
+
+    static bool RM(const std::string &rm_file);
+    static bool MV(const std::string &from, const std::string &to);
+    static bool RealPath(const std::string &path, const std::string &read_path);
+    static bool SymLink(const std::string &from, const std::string &to);
+    static bool UnLink(const std::string &file_name, bool exist = false);
+    static bool OpenForRead(std::ifstream &ifs,
+                            const std::string &file_name,
+                            std::ios_base::openmode mode);
+    static bool OpenForWrite(std::ofstream &ofs,
+                             const std::string &file_name,
+                             std::ios_base::openmode mode);
+
+    static std::string Dirname(const std::string &file_name);
+    static std::string Basename(const std::string &file_name);
+};
+
 } // namespace sylar
 
 #endif /* __SYLAR_UTIL_H__ */

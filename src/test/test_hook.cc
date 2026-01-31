@@ -6,6 +6,9 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 
+
+#include <string.h>
+
 sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
 void test_sleep()
@@ -17,10 +20,10 @@ void test_sleep()
         SYLAR_LOG_INFO(g_logger) << " sleep(2) ";
     });
 
-    iom.schedule([]() {
-        sleep(2);
-        SYLAR_LOG_INFO(g_logger) << " sleep(10) ";
-    });
+    // iom.schedule([]() {
+    //     sleep(2);
+    //     SYLAR_LOG_INFO(g_logger) << " sleep(10) ";
+    // });
 
     SYLAR_LOG_INFO(g_logger) << "hook sleep end";
 }
@@ -28,7 +31,9 @@ void test_sleep()
 void test_sock()
 {
 
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    SYLAR_LOG_INFO(g_logger) << "error_msg="<<strerror(errno);
+
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
 
     sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -41,7 +46,6 @@ void test_sock()
 
     SYLAR_LOG_INFO(g_logger) << "begin connect";
     int rt = connect(sock, (const sockaddr *)&addr, sizeof(addr));
-    SYLAR_LOG_INFO(g_logger) << "connect rt = " << rt << " errno=" << errno;
 
     if (rt) {
         return;
@@ -49,7 +53,9 @@ void test_sock()
 
     const char data[] = "GET / HTTP/1.0\r\n\r\n";
     rt                = send(sock, data, sizeof(data), 0);
-    SYLAR_LOG_INFO(g_logger) << "send rt = " << rt << " errno=" << errno;
+
+    // SYLAR_LOG_INFO(g_logger) << "send rt = " << rt << " errno=" << errno
+    //                          << ", error_msg="<<strerror(errno);
 
     if (rt <= 0) {
         return;
@@ -79,12 +85,12 @@ void test_sock()
 
 int main()
 {
-    test_sleep();
+    // test_sleep();
 
-    // std::cout << sylar::is_hook_enable()  << std::endl;
+    std::cout << sylar::is_hook_enable()  << std::endl;
 
-    // sylar::IOManager iom;
-    // iom.schedule(test_sock);
+    sylar::IOManager iom;
+    iom.schedule(test_sock);
 
     return 0;
 }

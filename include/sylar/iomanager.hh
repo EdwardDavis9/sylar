@@ -24,14 +24,21 @@ class IOManager : public Scheduler, public TimerManager {
     };
 
   private:
+
+#ifdef EPOLLEXCLUSIVE
+#define EPOLL_FLAGS  (EPOLLET | EPOLLEXCLUSIVE)
+#else
+#define EPOLL_FLAGS  (EPOLLET)
+#endif
+
     /**
-     * @struct Socket 事件上下文类
+     * @struct Socket 文件描述符上下文: 句柄+事件
      */
     struct FdContext {
         using MutexType = Mutex;
 
         /**
-         * @struct EventContext
+         * @struct 句柄对应事件的上下文: 调度器+协程/回调
          */
         struct EventContext {
             Scheduler *scheduler = nullptr;     /**< 事件执行的scheduler */
@@ -69,10 +76,10 @@ class IOManager : public Scheduler, public TimerManager {
     /**
      * @brief     构造函数
      * @param[in] threads 线程数量
-     * @param[in] use_caller 是否将调用线程包含进去
+     * @param[in] include_caller_thread 调用线程是否也参与任务的执行
      * @param[in] name 调度器的名称
      */
-    IOManager(size_t threads = 1, bool use_caller = true,
+    IOManager(size_t threads = 1, bool include_caller_thread = true,
               const std::string &name = "");
 
     /**

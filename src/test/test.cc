@@ -1,6 +1,8 @@
 #include "sylar/config.hh"
 #include "sylar/log.hh"
 #include "sylar/util.hh"
+#include "sylar/env.hh"
+
 #include <iostream>
 #include <yaml-cpp/yaml.h>
 // #include "fiber.hh"
@@ -40,7 +42,8 @@ sylar::ConfigVar<std::unordered_map<std::string, int>>::ptr
                               std::unordered_map<std::string, int>{{"k", 2}},
                               "system str int map");
 
-void testFormatter_1() {
+void testFormatter_1()
+{
 
     sylar::Logger::ptr logger(new sylar::Logger);
 
@@ -58,16 +61,16 @@ void testFormatter_1() {
     // logger->addAppender(sylar::LogAppender::ptr(std::make_shared<sylar::StdoutLogAppender>()));
     logger->addAppender(sylar::LogAppender::ptr(new sylar::StdoutLogAppender));
 
-    sylar::LogEvent::ptr event(new sylar::LogEvent(logger, logger->getLevel(),
-                                                   __FILE__, __LINE__, 0, 1, 2,
-                                                   time(0), "test"));
+    sylar::LogEvent::ptr event(new sylar::LogEvent(
+        logger->getLevel(), __FILE__, __LINE__, 0, 1, 2, time(0), "test"));
 
     // sylar::LogEvent::ptr event(new sylar::LogEvent(__FILE__, __LINE__, 0, 1,
     // 2, time(0)));
     logger->log(sylar::LogLevel::DEBUG, event);
 }
 
-void testFormatter_2() {
+void testFormatter_2()
+{
 
     sylar::Logger::ptr logger(std::make_shared<sylar::Logger>());
     // logger->initFormatter(); // 初始化默认日志格式解析器
@@ -85,9 +88,9 @@ void testFormatter_2() {
 
     logger->addAppender(file_appender);
 
-    SYLAR_LOG_ERROR((logger)) << "test macro error";
-    // SYLAR_LOG_DEBUG((logger)) << "test macro debug";
-    // SYLAR_LOG_INFO((logger)) << "test macro info";
+    SYLAR_LOG_ERROR(logger) << "test macro error";
+    SYLAR_LOG_DEBUG(logger) << "test macro debug";
+    SYLAR_LOG_INFO(logger) << "test macro info";
 
     // SYLAR_LOG_FMT_ERROR(logger, "test macro fmt error %s", "aa");
 
@@ -95,16 +98,19 @@ void testFormatter_2() {
     // SYLAR_LOG_INFO(l) << "xxx";
 }
 
-void print_yaml(const YAML::Node &node, int level) {
+void print_yaml(const YAML::Node &node, int level)
+{
     if (node.IsScalar()) {
         SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
             << std::string(level * 4, ' ') << node.Scalar() << " -  "
             << node.Type() << " - " << level;
-    } else if (node.IsNull()) {
+    }
+    else if (node.IsNull()) {
         SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
             << std::string(level * 4, ' ') << " NULL - " << node.Type() << " - "
             << level;
-    } else if (node.IsMap()) {
+    }
+    else if (node.IsMap()) {
         for (auto it = node.begin(); it != node.end(); ++it) {
             SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
                 << std::string(level * 4, ' ') << it->first << " - "
@@ -112,7 +118,8 @@ void print_yaml(const YAML::Node &node, int level) {
 
             print_yaml(it->second, level + 1);
         }
-    } else if (node.IsSequence()) {
+    }
+    else if (node.IsSequence()) {
         for (size_t i = 0; i < node.size(); ++i) {
             SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
                 << std::string(level * 4, ' ') << i << " - " << node[i].Type()
@@ -122,9 +129,10 @@ void print_yaml(const YAML::Node &node, int level) {
     }
 }
 
-void test_yaml() {
+void test_yaml()
+{
     YAML::Node root =
-        YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml");
+        YAML::LoadFile("/home/edward/Code/cc/sylar/bin/conf/log.yaml.bak");
 
     // print_yaml(root, 0);
     // SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << root.Scalar();
@@ -134,34 +142,35 @@ void test_yaml() {
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << root;
 }
 
-void test_config() {
+void test_config()
+{
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
         << "before g_int_value_config: " << g_int_value_config->getValue();
 
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
         << "before g_float_value_config: " << g_float_value_config->getValue();
 
-#define XX(g_var, name, prefix)                                                \
-    {                                                                          \
-        auto &v = g_var->getValue();                                           \
-        for (auto i : v) {                                                    \
-            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << #prefix " " #name ": " << i;   \
-        }                                                                      \
-        SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                       \
-            << #prefix " " #name " yaml: " << std::endl                        \
-            << g_var->toString(); /*yaml的格式*/                               \
+#define XX(g_var, name, prefix)                                              \
+    {                                                                        \
+        auto &v = g_var->getValue();                                         \
+        for (auto i : v) {                                                   \
+            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << #prefix " " #name ": " << i; \
+        }                                                                    \
+        SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                     \
+            << #prefix " " #name " yaml: " << std::endl                      \
+            << g_var->toString(); /*yaml的格式*/                             \
     }
 
-#define XX_M(g_var, name, prefix)                                              \
-    {                                                                          \
-        auto &v = g_var->getValue();                                           \
-        for (auto &i : v) {                                                    \
-            SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                   \
-                << #prefix " " #name ": {" << i.first << " - " << i.second     \
-                << "}";                                                        \
-        }                                                                      \
-        SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                       \
-            << #prefix " " #name " yaml: " << g_var->toString();               \
+#define XX_M(g_var, name, prefix)                                          \
+    {                                                                      \
+        auto &v = g_var->getValue();                                       \
+        for (auto &i : v) {                                                \
+            SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                               \
+                << #prefix " " #name ": {" << i.first << " - " << i.second \
+                << "}";                                                    \
+        }                                                                  \
+        SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                   \
+            << #prefix " " #name " yaml: " << g_var->toString();           \
     }
 
 #if 1
@@ -182,25 +191,25 @@ void test_config() {
     sylar::Config::LoadFromYaml(root);
 
     // // 验证每个变量
-    // std::cout << g_int_value_config->getValue() << std::endl;   // 是否等于 8080
-    // std::cout << g_float_value_config->getValue() << std::endl; // 是否等于 10.2
-
+    // std::cout << g_int_value_config->getValue() << std::endl;   // 是否等于
+    // 8080 std::cout << g_float_value_config->getValue() << std::endl; //
+    // 是否等于 10.2
 
     // for (auto &x : g_int_vec_value_config->getValue()) {
     //         SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::to_string(x);
     // }
-        // std::cout << x << " "; // 是否等于 YAML 中的 1,2,...
+    // std::cout << x << " "; // 是否等于 YAML 中的 1,2,...
 
     // for (auto &x : g_int_list_value_config->getValue())
     //     std::cout << x << " "; // 是否等于 YAML 中的 1,2,...
     // std::cout << std::endl;
 
-    SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "After: "
-                                     << g_int_value_config->getValue();
-    SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "After: "
-                                     << g_float_value_config->toString();
+    SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
+        << "After: " << g_int_value_config->getValue();
+    SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
+        << "After: " << g_float_value_config->toString();
 
-    XX(g_int_vec_value_config, int_vec,After change:);
+    XX(g_int_vec_value_config, int_vec, After change:);
     XX(g_int_list_value_config, int_list, After change:);
     XX(g_int_set_value_config, int_set, After change:);
     XX(g_int_uset_value_config, int_uset, After change:);
@@ -209,49 +218,54 @@ void test_config() {
 #endif
 }
 
-
 class Person {
   public:
     Person() {}
     std::string m_name = "default";
-    int m_age = 0;
-    bool m_sex = 0;
+    int m_age          = 0;
+    bool m_sex         = 0;
 
-    std::string toString() const {
+    std::string toString() const
+    {
         std::stringstream ss;
         ss << "[Person name=" << m_name << " age=" << m_age << " sex=" << m_sex
            << "]";
         return ss.str();
     }
 
-    bool operator==(const Person &oth) const {
+    bool operator==(const Person &oth) const
+    {
         return m_name == oth.m_name && m_age == oth.m_age && m_sex == oth.m_sex;
     }
 };
 
 namespace sylar {
 
-template <> class LexicalCast<std::string, Person> {
+template <>
+class LexicalCast<std::string, Person> {
   public:
     // configVar 调用 toStr 函数
-    Person operator()(const std::string &v) {
+    Person operator()(const std::string &v)
+    {
         YAML::Node node = YAML::Load(v);
         Person p;
         p.m_name = node["name"].as<std::string>();
-        p.m_age = node["age"].as<int>();
-        p.m_sex = node["sex"].as<bool>();
+        p.m_age  = node["age"].as<int>();
+        p.m_sex  = node["sex"].as<bool>();
 
         return p;
     }
 };
 
-template <> class LexicalCast<Person, std::string> {
+template <>
+class LexicalCast<Person, std::string> {
   public:
-    std::string operator()(const Person &v) {
+    std::string operator()(const Person &v)
+    {
         YAML::Node node;
         node["name"] = v.m_name;
-        node["age"] = v.m_age;
-        node["sex"] = v.m_sex;
+        node["age"]  = v.m_age;
+        node["sex"]  = v.m_sex;
         std::stringstream ss;
         // ss << "attribute: " << node["name"] << "," << node["age"] << ", " <<
         // node["sex"];
@@ -275,14 +289,15 @@ sylar::ConfigVar<std::map<std::string, std::vector<Person>>>::ptr
                               std::map<std::string, std::vector<Person>>(),
                               "system person");
 
-void test_class() {
+void test_class()
+{
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
         << "before: " << g_person->getValue().toString() << "\n"
-        << g_person->toString() << std::endl ;
+        << g_person->toString() << std::endl;
 
 #define XX_PM(g_var, prefix)                                                   \
     {                                                                          \
-        auto m = g_person_map->getValue();                                     \
+        auto m = g_var->getValue();                                            \
         for (auto &i : m) {                                                    \
             SYLAR_LOG_INFO(SYLAR_LOG_ROOT())                                   \
                 << prefix << " : " << i.first << " - " << i.second.toString(); \
@@ -310,11 +325,12 @@ void test_class() {
         << g_person->toString();
 
     XX_PM(g_person_map, "class.map after");
-    SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
-        << "after:\n" << g_person_vec_map->toString();
+    SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "after:\n"
+                                     << g_person_vec_map->toString();
 }
 
-void test_logs() {
+void test_logs()
+{
     static sylar::Logger::ptr system_log = SYLAR_LOG_NAME("system");
     SYLAR_LOG_INFO(system_log) << "hello system" << std::endl;
     std::cout << sylar::LoggerMgr::GetInstance()->toYamlString()
@@ -332,23 +348,45 @@ void test_logs() {
     SYLAR_LOG_INFO(system_log) << "hello system" << std::endl;
 }
 
-int main(int argc, char *argv[]) {
+void test_loadConf() { sylar::Config::LoadFromConfDir("../conf"); }
+
+int test_load(int argc, char **argv)
+{
+    sylar::EnvMgr::GetInstance()->init(argc, argv);
+    test_loadConf();
+    std::cout << " ===== " << std::endl;
+    sleep(10);
+    test_loadConf();
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
     // testFormatter_1();
     // testFormatter_2();
-    test_config();
+    // test_yaml();
+
+    // test_config();
+
     // test_class();
-#if 1
+
     // test_logs();
 
-    std::cout << " ------------------------- "<< std::endl;
+    // std::cout << "-------------------------"<< std::endl;
 
+#if 1
     sylar::Config::Visit([](sylar::ConfigVarBase::ptr var) {
-        SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "name=" << var->getName()
-            << " description=" << var->getDescription()
+        SYLAR_LOG_INFO(SYLAR_LOG_ROOT())
+            << "name=" << var->getName() << " description="
+            << var->getDescription()
             // << " typename=" << var->getTypeName()
             << " value=" << var->toString();
     });
+
 #endif
+
+    // test_loadConf();
+    // test_load(argc, argv);
 
     return 0;
 }

@@ -51,9 +51,9 @@ void IOManager::FdContext::triggerEvent(IOManager::Event event)
 }
 
 IOManager::IOManager(size_t threads,
-					 bool use_caller,
+					 bool include_caller_thread,
 					 const std::string &name)
-    : Scheduler(threads, use_caller, name)
+    : Scheduler(threads, include_caller_thread, name)
 {
     m_epfd = epoll_create(500);
     SYLAR_ASSERT(m_epfd > 0);
@@ -134,7 +134,11 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     // 构造 epoll_event 并注册事件
     int op = fd_ctx->events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
     epoll_event epevent;
-    epevent.events = EPOLLET | fd_ctx->events | event;
+    if(op == EPOLL_CTL_MOD) {
+        epevent.events = EPOLLET | fd_ctx->events | event;
+    } else if(op & EPOLL_CTL_ADD){
+        epevent.events = EPOLL_FLAGS | fd_ctx->events | event;
+    }
     epevent.data.ptr = fd_ctx;
 
     int rt = epoll_ctl(m_epfd, op, fd, &epevent);
@@ -328,6 +332,10 @@ void IOManager::idle()
     std::shared_ptr<epoll_event> shared_events(
         events, [](epoll_event *ptr) { delete[] ptr; });
 
+    // 测试 tcp-server的默认行为
+    // 发现，两个 idle 协程会不断输出内容
+    // uint64_t test = 0;
+
     while (true) {
         uint64_t next_timeout = 0;
         if(stopping(next_timeout)) {
@@ -337,6 +345,9 @@ void IOManager::idle()
         }
 
         int rt{0};
+
+        // 测试 tcp-server的默认行为
+        // SYLAR_LOG_DEBUG(g_logger)  << test++ << std::endl;
 
         do {
             // 最大超时时间
@@ -366,8 +377,15 @@ void IOManager::idle()
             epoll_event &event = events[i];
             if (event.data.fd == m_tickleFds[0]) {
                 uint8_t dummy;
+                int saved_errno = errno;
+
                 while (read(m_tickleFds[0], &dummy, 1) == 1)
                     ;
+                // 这里会产生一个错误, 非阻塞式读取了一个内容,因此会设置了errno, 因此后续需要进行恢复
+                // SYLAR_LOG_INFO(g_logger) << "read ===2" << " errno=" << errno
+                //                          << ", error_msg="<<strerror(errno);
+
+                errno = saved_errno; // 恢复之前的errno
                 continue;
             }
 

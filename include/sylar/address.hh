@@ -5,7 +5,6 @@
  * @author    edward
  * @copyright BSD-3-Clause
  *
- * This module
  */
 
 #ifndef __SYLAR_ADDRESS_H__
@@ -109,6 +108,9 @@ class Address {
 	* @brief 返回协议族
 	*/
 	int getFamily() const;
+
+
+	std::string getFamilyToString() const;
 
 	/**
 	* @brief 返回一个只读的 sockaddr 指针

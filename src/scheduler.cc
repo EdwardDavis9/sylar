@@ -12,12 +12,12 @@ static thread_local Scheduler *t_scheduler =
 // 当前线程对应的协程对象
 static thread_local Fiber *t_scheduler_fiber = nullptr;
 
-Scheduler::Scheduler(size_t threads, bool use_caller, const std::string &name)
+Scheduler::Scheduler(size_t threads, bool include_caller_thread, const std::string &name)
     : m_name(name)
 {
     SYLAR_ASSERT(threads > 0);
 
-    if (use_caller) {
+    if (include_caller_thread) {
         sylar::Fiber::GetThis();
         --threads; // 当前线程也会被调度, 所以 总线程数 = 需要创建的线程数-1
 
@@ -68,7 +68,7 @@ void Scheduler::start()
 {
     {
         MutexType::Lock lock(m_mutex);
-        if (!m_stopping) { // 默认是停止状态，因此不会去执行
+        if (!m_stopping) { // 默认是停止状态, 因此不会去执行
             return;
         }
         m_stopping = false;
@@ -161,14 +161,18 @@ void Scheduler::setThis() { t_scheduler = this; }
 
 void Scheduler::run()
 {
+
+    // 新创建的线程会创建自身的主线程, 但是不会创建调度线程
+    // 即此时, 只会存在一个调度线程, 但是可能存在多个主协程/idle协程/任务协程
+    if (sylar::GetThreadId() != m_rootThread) {
+        t_scheduler_fiber = Fiber::GetThis().get();
+    }
+
     SYLAR_LOG_INFO(g_logger) << "run";
 
     set_hook_enable(true);
     setThis();
 
-    if (sylar::GetThreadId() != m_rootThread) {
-        t_scheduler_fiber = Fiber::GetThis().get();
-    }
 
     // 创建了 idle 协程对象
     // Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::idle, this)));
@@ -220,6 +224,8 @@ void Scheduler::run()
         if (tickle_me) {
             tickle();
         }
+
+        // 事实上, fiber 和 cb 的区别就是是否需要创建一个 fiber, 然后挂载执行
 
         // ft 任务处理操作
         if (ft.fiber
