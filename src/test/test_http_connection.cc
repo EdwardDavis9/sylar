@@ -12,12 +12,14 @@ static sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
  */
 void test_pool()
 {
+    // 测试连接池资源的复用和销毁
     sylar::http::HttpConnectionPool::ptr pool(
         new sylar::http::HttpConnectionPool("www.baidu.com", "", 80, 1,
                                             1000 * 30, 5));
     sylar::IOManager::GetThis()->addTimer(
         1000,
         [pool]() {
+            // 每隔 1 秒发送一个 get 请求，然后 5 次后，就销毁这个连接，然后重新建立连接
             auto r = pool->doGet("/", 3000);
 
             // SYLAR_LOG_INFO(g_logger) << r->toString();
@@ -31,7 +33,7 @@ void test_pool()
 
 void run()
 {
-#if 0
+    // 测试连接池消息的发送和接收
     sylar::Address::ptr addr =
         sylar::Address::LookupAnyIPAddress("www.baidu.com:80");
         // sylar::Address::LookupAnyIPAddress("www.httpbin.com:80");
@@ -87,15 +89,12 @@ void run()
         << (r->m_response ? r->m_response->toString() : "");
 
     SYLAR_LOG_INFO(g_logger) << "=========================";
-#endif
-
-    // 测试连接池
-    test_pool();
 }
 
 int main(int argc, char *argv[])
 {
     sylar::IOManager iom(2);
-    iom.schedule(run);
+    // iom.schedule(run);
+    iom.schedule(test_pool);
     return 0;
 }

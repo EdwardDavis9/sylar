@@ -22,7 +22,7 @@
     if (logger->getLevel() <= level)                                    \
     sylar::LogEventWrap(logger,                                         \
         sylar::LogEvent::ptr(new sylar::LogEvent(                       \
-            level, __FILE__, __LINE__, 0, sylar::GetThreadId(), \
+            level, __FILE__, __LINE__, 0, sylar::GetThreadId(),         \
             sylar::GetFiberId(), time(0), sylar::Thread::GetName())))   \
         .getSS()
 
@@ -90,22 +90,9 @@ class LogEvent {
   public:
     using ptr = std::shared_ptr<LogEvent>;
 
-    // LogEvent(const char *file, int32_t line, uint32_t elapse,
-    //          uint32_t thread_id, uint32_t fiber_id, uint64_t time);
-
     /**
      * @brief 构造日志事件
      */
-    // LogEvent(std::shared_ptr<Logger> logger,
-    //          LogLevel::Level level,
-    //          const char *file,
-    //          int32_t line,
-    //          uint32_t elapse,
-    //          uint32_t thread_id,
-    //          uint32_t fiber_id,
-    //          uint64_t time,
-    //          const std::string &thread_name);
-
     LogEvent(
              LogLevel::Level level,
              const char *file,
@@ -254,6 +241,12 @@ class LogAppender {
 
     void setLevel(LogLevel::Level val) { m_level = val; }
 
+    bool equalTo(const LogAppender& o) const {
+        return this->getLevel() == o.getLevel();
+    };
+
+    virtual bool operator==(const LogAppender& other) const = 0;
+
   protected:
     LogLevel::Level m_level =
         LogLevel::DEBUG;           /**< 日志输出器的默认提示日志级别*/
@@ -311,12 +304,12 @@ class Logger : public std::enable_shared_from_this<Logger> {
     std::string toYamlString();
 
   private:
-    std::string m_name;                      /**< 日志名 */
-    LogLevel::Level m_level;                 /**< Logger 的日志级别 */
-    std::list<LogAppender::ptr> m_appenders; /**< 输出器集合 */
-    LogFormatter::ptr m_formatter;           /**< 日志器所属的格式解析器 */
-    Logger::ptr m_root;                      /**<  root 指针*/
-    MutexType m_mutex;                       /**< 系统层面上的自旋锁 */
+    std::string m_name;                          /**< 日志名 */
+    LogLevel::Level m_level = LogLevel::DEBUG;   /**< Logger 的日志级别 */
+    std::list<LogAppender::ptr> m_appenders;     /**< 输出器集合 */
+    LogFormatter::ptr m_formatter;               /**< 日志器所属的格式解析器 */
+    Logger::ptr m_root;                          /**< root 指针*/
+    MutexType m_mutex;                           /**< 系统层面上的自旋锁 */
 };
 
 /**
@@ -341,12 +334,22 @@ class LogEventWrap {
 class StdoutLogAppender : public LogAppender {
 
   public:
+    StdoutLogAppender(std::string name = "StdoutLogAppender") : m_name(name) {}
     using ptr = std::shared_ptr<StdoutLogAppender>;
     void log(std::shared_ptr<Logger> logger,
              LogLevel::Level level,
              LogEvent::ptr event) override;
 
     std::string toYamlString() override;
+
+    bool operator==(const LogAppender& other) const override {
+        auto other_obj = dynamic_cast<const StdoutLogAppender*>(&other);
+        if(!other_obj) return false;
+        return this->m_name == other_obj->m_name && this->equalTo(other);
+    };
+
+    private:
+    std::string m_name;
 };
 
 /**
@@ -357,13 +360,23 @@ class FileLogAppender : public LogAppender {
   public:
     using ptr = std::shared_ptr<FileLogAppender>;
 
+
     void log(std::shared_ptr<Logger> logger,
              LogLevel::Level level,
              LogEvent::ptr event) override;
 
-    FileLogAppender(const std::string &filename);
+    FileLogAppender(const std::string &filename, std::string name = "FileLogAppender");
 
     std::string toYamlString() override;
+
+    bool operator==(const LogAppender& other) const override {
+        auto other_obj = dynamic_cast<const FileLogAppender*>(&other);
+        if(!other_obj) return false;
+
+        if (!equalTo(other)) return false;
+        return m_name == other_obj->m_name;
+    };
+
 
     /**
      * @brief  重新打开文件
@@ -375,6 +388,8 @@ class FileLogAppender : public LogAppender {
     std::string m_filename;
     std::ofstream m_filestream;
     uint64_t m_lastTime = 0;
+
+    std::string m_name;
 };
 
 class LoggerManager {

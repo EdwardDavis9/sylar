@@ -258,7 +258,7 @@ private:
 	volatile std::atomic_flag m_mutex;
 };
 
-class Thread {
+class Thread:Noncopyable {
 public:
     using ptr = std::shared_ptr<Thread>;
 	Thread(std::function<void()> cb, const std::string& name);
@@ -274,9 +274,6 @@ public:
 	static void SetName(const std::string& name);
 
 private:
-	Thread(const Thread&) = delete;
-	Thread(const Thread&&) = delete;
-	Thread& operator=(const Thread&) = delete;
 
 	static void* run(void* arg);
 

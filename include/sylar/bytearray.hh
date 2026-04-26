@@ -531,7 +531,7 @@ class ByteArray {
     size_t m_baseSize; /**< 每个 Node 的默认大小 */
     size_t m_position; /**< 当前操作位置 */
     size_t m_capacity; /**< 当前分配的总容量(可以写入的最大数据量) */
-    size_t m_size;     /**< 当前写入数据的总大小 */
+    size_t m_size;     /**< 当前有效数据范围的上界, 最大的可读取的数据上界 */
     size_t m_endian;   /**< 字节序, 默认大端 */
 
     Node *m_root; /**< 第一个内存块指针 */

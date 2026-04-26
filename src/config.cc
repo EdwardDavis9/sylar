@@ -70,7 +70,8 @@ void Config::LoadFromYaml(const YAML::Node &root)
         if (var) {
             if (i.second.IsScalar()) {
                 var->fromString(i.second.Scalar());
-            } else {
+            }
+            else {
                 std::stringstream ss;
                 ss << i.second;
                 var->fromString(ss.str());
@@ -86,6 +87,8 @@ auto Config::LoadFromConfDir(const std::string &path) -> void
 {
     std::string absolute_path =
         sylar::EnvMgr::GetInstance()->getAbsolutePath(path);
+
+
     std::vector<std::string> files;
     FSUtil::ListAllFile(files, absolute_path, ".yaml");
 
@@ -99,11 +102,16 @@ auto Config::LoadFromConfDir(const std::string &path) -> void
             if (S_FileModifyTime[i] == (uint64_t)st.st_mtime) {
                 continue;
             }
+            // std::cout << "load file::" << i << "-----------" << std::endl;
+            // 使用日志输出器可能收到日志配置的管理
+            // SYLAR_LOG_INFO(g_logger) << "load file::" << i  << "-----------";
+            // SYLAR_LOG_DEBUG(g_logger) << "load file::" << i  << "-----------";
             S_FileModifyTime[i] = st.st_mtime;
         }
         try {
             YAML::Node root = YAML::LoadFile(i);
             LoadFromYaml(root);
+            // std::cout << root  << "-------------------;;;" << std::endl;
             SYLAR_LOG_INFO(g_logger) << "LoadConfFile file=" << i << " ok";
         } catch (...) {
             SYLAR_LOG_ERROR(g_logger) << "LoadConfFile file=" << i << " failed";

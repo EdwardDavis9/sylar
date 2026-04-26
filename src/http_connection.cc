@@ -31,22 +31,21 @@ HttpResponse::ptr HttpConnection::recvResponse() {
     HttpResponseParser::ptr parser(new HttpResponseParser);
     uint64_t response_buffer_size =
         HttpResponseParser::GetHttpResponseBufferSize();
-    // uint64_t response_buffer_size = 100;
 
     std::shared_ptr<char> buffer(new char[response_buffer_size + 1],
                                  [](char *ptr) { delete[] ptr; });
 
     char *data = buffer.get();
-    int unparsed_offset = 0; // 已经解析的数据, 或者说未解析数据的位置
+    int unparsed_data = 0; // 已经解析的数据, 或者说未解析数据的位置
     // 接受并解析头部字段
     do {
-        int current_read_size = read(data + unparsed_offset,
-                                     response_buffer_size - unparsed_offset);
+        int current_read_size = read(data + unparsed_data,
+                                     response_buffer_size - unparsed_data);
         if (current_read_size <= 0) {
             close();
             return nullptr;
         }
-        current_read_size += unparsed_offset;
+        current_read_size += unparsed_data;
 
         data[current_read_size] = '\0';
 
@@ -56,8 +55,8 @@ HttpResponse::ptr HttpConnection::recvResponse() {
             return nullptr;
         }
 
-        unparsed_offset = current_read_size - nparser;
-        if (unparsed_offset == (int)response_buffer_size) {
+        unparsed_data = current_read_size - nparser;
+        if (unparsed_data == (int)response_buffer_size) {
             // 首次请求解析的数据等于当前的 response_buffer_size,
             // 那么说明是恶意请求, 数据过大
             close();
@@ -73,12 +72,10 @@ HttpResponse::ptr HttpConnection::recvResponse() {
     if (client_parser.chunked) {
         // 是否是 chunked body, chunk 还有一个小型头, 即长度+数据的形式
         std::string body;
-        int unparsed_index = unparsed_offset;
+        int unparsed_index = unparsed_data;
         // 分块传输
-        do {
-            // 通过 do-while 读取 chunk data 的长度头, 避免传输时的分段的行为,
-            // 因为状态检测依靠一个完整的模式才能表示状态检测结束
-            do {
+        do { // 循环处理所有的 chunk 数据
+            do { // 循环处理本轮的 chunk 数据
                 int read_size = read(data + unparsed_index,
                                      response_buffer_size - unparsed_index);
                 if (read_size <= 0) {
@@ -147,46 +144,6 @@ HttpResponse::ptr HttpConnection::recvResponse() {
                 close();
                 return nullptr;
             }
-            // －－－
-
-            // // chunk 部分中: 4\r\nWiki\r\n7\r\nabdcefg\r\n
-            // //  每个 chunk 的数据后面都有 CRLF (\r\n)
-            // //  减去 2 表示 去掉 chunk data 末尾的 CRLF, 准备拼接到 body
-            // unparsed_index -= 2;
-
-            // SYLAR_LOG_INFO(g_logger)
-            //     << "client_content-len=" << client_parser.content_len;
-
-            // // 每个 chunked 段的实际大小: 长度头 + 实际的数据体
-            // if (client_parser.content_len <= unparsed_index) {
-            //     // 在解析时, 头部字段内容已经被消耗, 追加前 conten_len 个
-            //     body.append(data, client_parser.content_len);
-
-            //     // 消耗掉读取的 chunk data
-            //     unparsed_index -= client_parser.content_len;
-            //     memmove(data, data + client_parser.content_len,
-            //     unparsed_index);
-
-            // }
-            // else {
-            //     // 只读取固定前长度
-            //     body.append(data, unparsed_index);
-            //     int left = client_parser.content_len - unparsed_index;
-            //     while (left > 0) {
-            //         int read_size = read(data, left >
-            //         (int)response_buffer_size
-            //                                        ?
-            //                                        (int)response_buffer_size
-            //                                        : left);
-            //         if (read_size <= 0) {
-            //             close();
-            //             return nullptr;
-            //         }
-            //         body.append(data, read_size);
-            //         left -= read_size;
-            //     }
-            //     unparsed_index = 0;
-            // }
         } while (!client_parser.chunks_done);
         parser->getData()->setBody(body);
     } else { // 非chunk类型的话，直接读取
@@ -195,15 +152,12 @@ HttpResponse::ptr HttpConnection::recvResponse() {
 
             std::string body;
             int need = content_size;
-            int take = std::min(need, unparsed_offset);
+            int take = std::min(need, unparsed_data);
 
             body.resize(content_size);
             if (take) {
                 memcpy(&body[0], data, take);
             }
-
-            // body.reserve(content_size);
-            // body.append(data, take);
 
             need -= take;
             if (need) {
@@ -214,30 +168,6 @@ HttpResponse::ptr HttpConnection::recvResponse() {
             }
             parser->getData()->setBody(body);
 
-            // int len = 0;
-            // if (content_size >= unparsed_offset) {
-            //     memcpy(&body[0], data, unparsed_offset);
-            //     len = unparsed_offset;
-            // }
-            // else {
-            //     memcpy(&body[0], data, content_size);
-            //     // 缓冲区中的未解析数据比 content_size 还大
-            //     // 说明缓冲区里的数据已经能把整个 body 填满,
-            //     // 即还存其他的请求数据 因此本次请求解析只需要读取
-            //     content_size
-            //     // 个数据即可
-            //     len = content_size;
-            // }
-            // content_size -= unparsed_offset;
-
-            // if (content_size > 0) {
-            //     // 如果还未读取完毕请求体的话, 接下来读取剩下的请求体
-            //     if (readFixSize(&body[len], content_size) <= 0) {
-            //         close();
-            //         return nullptr;
-            //     }
-            // }
-            // parser->getData()->setBody(body);
         } else if (content_size == 0) {
             parser->getData()->setBody("");
         }
@@ -426,7 +356,7 @@ HttpConnection::ptr HttpConnectionPool::getConnection() {
 
     m_total -= invaild_conns.size();
 
-    // 若不存在有效的连接, 那么创建一个连接
+    // 若没有获取到有效的连接, 那么创建一个连接
     if (!ptr) {
         // 增加新连接时，判断是否已经达到最大的连接数
         {
@@ -453,7 +383,7 @@ HttpConnection::ptr HttpConnectionPool::getConnection() {
         }
 
         if (!sock->connect(addr)) {
-            SYLAR_LOG_ERROR(g_logger) << "socket connect faile: " << *addr;
+            SYLAR_LOG_ERROR(g_logger) << "socket connect fail: " << *addr;
             return nullptr;
         }
 

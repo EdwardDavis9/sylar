@@ -105,13 +105,12 @@ auto Timer::reset(uint64_t ms, bool from_now) -> bool
 void TimerManager::addTimer(Timer::ptr val, RWMutexType::WriteLock &lock)
 {
     auto it       = m_timers.insert(val).first;
-    bool at_front = (it == m_timers.begin()) && !m_tickled;
 
-    // 首个定时器对象需要去通知事件循环
+    // 如果设置的这个是第一个元素，且没有设置通知的话，那么需要通知事件循环
+    bool at_front = (it == m_timers.begin()) && !m_tickled;
     if (at_front) {
         m_tickled = true;
     }
-
     lock.unlock();
 
     if (at_front) {
@@ -147,6 +146,7 @@ auto TimerManager::addTimer(uint64_t ms, std::function<void()> cb,
 
 static void OnTimer(std::weak_ptr<void> weak_cond, std::function<void()> cb)
 {
+    // 尝试提升为 shared_ptr, 只有仍存活的时候，才会去调用
     std::shared_ptr<void> tmp = weak_cond.lock(); // 获得这个条件定时器对象
 
     if (tmp) {
@@ -172,7 +172,7 @@ uint64_t TimerManager::getNextTimer()
     m_tickled = false;
 
     if (m_timers.empty()) {
-        return ~0ull; // 返回一个 ui64 的最大值
+        return ~0ull; // 返回一个 ull64 的最大值
     }
 
     const Timer::ptr &next = *m_timers.begin();

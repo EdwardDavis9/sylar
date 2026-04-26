@@ -14,12 +14,12 @@ int serv_main(int argc, char **argv)
     timer = iom.addTimer(
         1000,
         []() {
-            SYLAR_LOG_INFO(g_logger) << "onTimer";
             static int count = 0;
-            if (++count > 10) {
+            if (++count >= 30) {
                 timer->cancel(); // 正常退出的测试
                 // exit(1);      // 异常退出的测试
             }
+            SYLAR_LOG_INFO(g_logger) << "onTimer";
         },
         true);
     return 0;

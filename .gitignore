@@ -4,6 +4,8 @@
 *.flv
 *.webm
 
+
+
 # 编译器生成的文件
 *.o
 *.obj
@@ -31,8 +33,13 @@
 root.txt
 system.txt
 
+*.rl.cc
+
 # 一些目录
 /bin/app/*
+/bin/test/*
+/bin/example/*
+**/bin/Debug/**
 **/视频/**
 **/build/**
 **/.ccls-cache/**

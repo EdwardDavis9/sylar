@@ -1,18 +1,17 @@
 #include "sylar/hook.hh"
-#include "sylar/log.hh"
 #include "sylar/iomanager.hh"
-#include <sys/socket.h>
-#include <string.h>
+#include "sylar/log.hh"
 #include <arpa/inet.h>
 #include <stdint.h>
-
+#include <string.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include <string.h>
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
-void test_sleep()
-{
+void test_sleep() {
     sylar::IOManager iom(1);
 
     iom.schedule([]() {
@@ -28,10 +27,9 @@ void test_sleep()
     SYLAR_LOG_INFO(g_logger) << "hook sleep end";
 }
 
-void test_sock()
-{
+void test_sock() {
 
-    SYLAR_LOG_INFO(g_logger) << "error_msg="<<strerror(errno);
+    SYLAR_LOG_INFO(g_logger) << "error_msg=" << strerror(errno);
 
     int sock = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -39,20 +37,22 @@ void test_sock()
     memset(&addr, 0, sizeof(addr));
 
     addr.sin_family = AF_INET;
-    addr.sin_port   = htons(80);
+    addr.sin_port = htons(80);
     inet_pton(AF_INET, "180.101.51.73", &addr.sin_addr.s_addr);
     // inet_pton(AF_INET, "183.2.172.177", &addr.sin_addr.s_addr);
     // inet_pton(AF_INET, "115.239.210.2", &addr.sin_addr.s_addr);
+
 
     SYLAR_LOG_INFO(g_logger) << "begin connect";
     int rt = connect(sock, (const sockaddr *)&addr, sizeof(addr));
 
     if (rt) {
+        SYLAR_LOG_ERROR(g_logger) << "connect failed: " << strerror(errno);
         return;
     }
 
     const char data[] = "GET / HTTP/1.0\r\n\r\n";
-    rt                = send(sock, data, sizeof(data), 0);
+    rt = send(sock, data, sizeof(data), 0);
 
     // SYLAR_LOG_INFO(g_logger) << "send rt = " << rt << " errno=" << errno
     //                          << ", error_msg="<<strerror(errno);
@@ -77,14 +77,9 @@ void test_sock()
         // buff.resize(rt);
         std::cout << buff;
     }
-
-    // if(rt <= 0) {
-    // 		return;
-    // }
 }
 
-int main()
-{
+int main() {
     // test_sleep();
 
     std::cout << sylar::is_hook_enable()  << std::endl;

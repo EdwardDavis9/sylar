@@ -52,7 +52,7 @@ int SocketStream::write(ByteArray::ptr ba, size_t length)
 		return -1;
 	}
 	std::vector<iovec> iovs;
-	ba->getWriteBuffers(iovs, length);
+	ba->getReadBuffers(iovs, length);
 	int write_size = m_socket->send(&iovs[0], iovs.size());
 	if(write_size > 0) {
 		ba->setPosition(ba->getPosition() + write_size);

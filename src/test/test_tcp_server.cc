@@ -1,5 +1,4 @@
 #include <vector>
-
 #include "sylar/log.hh"
 #include "http/tcp_server.hh"
 #include "sylar/iomanager.hh"
@@ -13,7 +12,10 @@ void run()
     // SYLAR_LOG_INFO(g_logger) << *addr;
 
     auto addr2 =
-        sylar::UnixAddress::ptr(new sylar::UnixAddress("/tmp/unix_addr"));
+        // 使用前记得删除这个 unix_addr 的套接字地址，否则监听地址会建立失败
+        // sylar::UnixAddress::ptr(new sylar::UnixAddress("/tmp/unix_addr"));
+        // 或者直接使用这个地址形式
+        sylar::UnixAddress::ptr(new sylar::UnixAddress("\0/tmp/unix_addr"));
 
     // SYLAR_LOG_INFO(g_logger) << *addr2;
 
@@ -34,6 +36,7 @@ void run()
 int main(int argc, char *argv[])
 {
     sylar::IOManager iom(2);
+    // nc 127.0.0.1 8033 # 通过 nc 直接连接即可看到测试效果
     iom.schedule(run);
     return 0;
 }

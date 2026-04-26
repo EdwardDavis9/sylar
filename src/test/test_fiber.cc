@@ -5,20 +5,20 @@ sylar::Logger::ptr g_test   = SYLAR_LOG_NAME("TEST---");
 
 void run_in_fiber()
 {
-    std::cout << "2___" << std::endl;
+    std::cout << "========= 2---" << std::endl;
     SYLAR_LOG_INFO(g_logger) << "run_in_fiber begin";
     sylar::Fiber::YieldToHold();
-    std::cout << "4___" << std::endl;
+    std::cout << "========= 4---" << std::endl;
     SYLAR_LOG_INFO(g_logger) << "run_in_fiber end";
     sylar::Fiber::YieldToHold();
-    std::cout << "6___" << std::endl;
+    std::cout << "========= 6---" << std::endl;
 }
 
 void test_fiber()
 {
     // sylar::Fiber::GetThis();
     std::cout << "0___" << std::endl;
-    sylar::Scheduler sc;
+    sylar::Scheduler sc; // 必须创建这个否则无法切换
 
     SYLAR_LOG_INFO(g_logger) << "main begin";
 
@@ -27,17 +27,17 @@ void test_fiber()
     // 2, 当通过 YielHold 时，会创建第二个
     // 总共就出现了三个对象
     sylar::Fiber::ptr fiber(new sylar::Fiber(run_in_fiber));
-    std::cout << "1___" << std::endl;
+    std::cout << "========= 1___" << std::endl;
     fiber->swapIn();
-    std::cout << "3___" << std::endl;
+    std::cout << "========= 3___" << std::endl;
 
     SYLAR_LOG_INFO(g_logger) << "main affter swapIn";
     fiber->swapIn();
-    std::cout << "5___" << std::endl;
+    std::cout << "========= 5___" << std::endl;
 
     SYLAR_LOG_INFO(g_logger) << "main after end";
     fiber->swapIn();
-    std::cout << "7___" << std::endl;
+    std::cout << "========= 7___" << std::endl;
 }
 
 int main()

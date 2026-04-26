@@ -21,7 +21,7 @@ class HttpServer : public TcpServer {
      * @param[in] worker 工作调度器
      * @param[in] accept_worker 接收连接调度器
      */
-    HttpServer(bool isKeepAlice                = false,
+    HttpServer(bool isKeepAlive                = false,
                sylar::IOManager *worker        = sylar::IOManager::GetThis(),
                sylar::IOManager *accept_worker = sylar::IOManager::GetThis());
 

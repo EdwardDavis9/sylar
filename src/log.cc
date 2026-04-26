@@ -111,13 +111,13 @@ void LogAppender::setFormatter(LogFormatter::ptr var)
 Logger::Logger(const std::string &name) : m_name(name), m_level(LogLevel::DEBUG)
 {
     m_formatter.reset(new LogFormatter(
-        "%d{%Y-%m-%d %H:%M:%S}%T%t%T%N%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
+        "%d{%Y-%m-%d %H:%M:%S}%T%t%T%N%T%F%T[%p]%T[%c]%T%f:%l%T%m%T%N%n"));
 }
 
 void Logger::initFormatter()
 {
     m_formatter.reset(new LogFormatter(
-        "%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
+        "%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%T%N%n"));
 }
 
 void Logger::setFormatter(LogFormatter::ptr var)
@@ -181,6 +181,12 @@ LogFormatter::ptr Logger::getFormatter()
 void Logger::addAppender(LogAppender::ptr appender)
 {
     MutexType::Lock lock(m_mutex);
+
+    for (const auto& existing : m_appenders) {
+        if (*existing == *appender) {
+            return;
+        }
+    }
 
     if (!appender->getFormatter()) {
         MutexType::Lock ll(appender->m_mutex);
@@ -285,8 +291,8 @@ bool FileLogAppender::reopen()
     return FSUtil::OpenForWrite(m_filestream, m_filename, std::ios::app);
 }
 
-FileLogAppender::FileLogAppender(const std::string &filename)
-    : m_filename(filename)
+FileLogAppender::FileLogAppender(const std::string &filename, std::string name)
+    : m_filename(filename), m_name(name)
 {
     reopen();
 }
@@ -299,16 +305,14 @@ void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level,
         uint64_t now = event->getTime();
 
         // 为避免在输出内容时, 文件被删除, 这里每次在输出前都 ropen
-        // if (now != m_lastTime) {
         if (now >= (m_lastTime + 3)) {
             reopen();
             m_lastTime = now;
         }
 
         MutexType::Lock lock(m_mutex);
-        // if (!(m_filestream << m_formatter->format(logger, level, event))) {
         if (!m_formatter->format(m_filestream, logger, level, event)) {
-            std::cout << "error " << std::endl;
+            std::cout << "FileLogAppender format error " << std::endl;
         }
     }
 }
@@ -550,6 +554,10 @@ void LogFormatter::init()
     std::string nstr; // 普通字符, 如中括号大括号等
 
     for (size_t i = 0; i < m_pattern.size(); ++i) {
+
+        // 假设 m_pattern = "Score: %d points"
+        // 处理 Score: (包括空格)这些普通字符时,都追加到 nstr,此时 nstr =
+        // "Score: "
         if (m_pattern[i] != '%') {
             nstr.append(1, m_pattern[i]);
             continue;
@@ -572,6 +580,12 @@ void LogFormatter::init()
             std::string fmt; // 占位格式, 如 %d{%Y-%m-%d} 中的 %Y-%m-%d
             while (n < m_pattern.size()) {
 
+                // m_pattern 是格式字符串,例如 "%d %m" 或 "%d{%H:%M:%S} - %m".
+                // 在解析一个占位符的名字时(尚未遇到 {),突然遇到一个既不是字母,
+                // 也不是 { 或 } 的字符--比如空格,逗号,换行等.
+                // 这个字符标志着占位符名字到此结束,并且它本身不属于占位符,
+                // 而是下一个普通字符的开始
+                //
                 // 出现标记字符了, 因此只记录当前内容, 然后终止本轮的 while 解析
                 // 分段解析的关键, 如果不在花括号中, 遇到非字母和非{}字符,
                 // 结束占位符解析
@@ -616,6 +630,10 @@ void LogFormatter::init()
                 }
             }
             if (fmt_status == 0) {
+                // 遇到 %,发现 nstr 非空,于是先将 ("Score: ", "", 0) 加入vec,
+                // 并清空 nstr. 解析占位符 %d,得到 ("d", "", 1) 加入 vec.
+                // 循环结束,最后将(" points", "", 0) 加入 vec. 最终 vec
+                // 的顺序正确反映了原始字符串的顺序.
                 if (!nstr.empty()) {
                     // 如果存在普通字符串, 那么先存放普通字符串
                     vec.push_back(std::make_tuple(nstr, "", 0));
@@ -867,13 +885,16 @@ struct LogIniter {
                 sylar::Logger::ptr logger;
                 auto it = old_value.find(i);
                 if (it == old_value.end()) {
-                    // 新增 logger
+                    // 旧配置中不存在这个 logger, 那么直接新增
                     logger = SYLAR_LOG_NAME(i.name);
                 }
                 else {
                     if (!(i == *it)) {
-                        // 修改 logger
+                        // 不相等的话，先获取单例的 logger,然后进行修改
                         logger = SYLAR_LOG_NAME(i.name);
+                    } else if (i == *it) {
+                        // 相等的话直接返回
+                        continue;
                     }
                 }
                 logger->setLevel(i.level);

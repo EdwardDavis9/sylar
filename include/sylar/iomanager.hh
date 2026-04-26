@@ -3,6 +3,7 @@
 
 #include "sylar/scheduler.hh"
 #include "sylar/timer.hh"
+#include <sys/epoll.h>
 
 namespace sylar {
 
@@ -18,19 +19,14 @@ class IOManager : public Scheduler, public TimerManager {
      * @enum Event
      */
     enum Event {
-        NONE  = 0x0,   /**< 无事件 */
-        READ  = 0x1,   /**< 读事件(EPOLLIN)*/
-        WRITE = 0x4,   /**< 写事件(EPOLLOUT)*/
+
+#define EPOLLNONE 0x000
+        NONE  = EPOLLNONE, /**< 无事件 */
+        READ  = EPOLLIN,   /**< 读事件 */
+        WRITE = EPOLLOUT,  /**< 写事件 */
     };
 
   private:
-
-#ifdef EPOLLEXCLUSIVE
-#define EPOLL_FLAGS  (EPOLLET | EPOLLEXCLUSIVE)
-#else
-#define EPOLL_FLAGS  (EPOLLET)
-#endif
-
     /**
      * @struct Socket 文件描述符上下文: 句柄+事件
      */
@@ -44,6 +40,7 @@ class IOManager : public Scheduler, public TimerManager {
             Scheduler *scheduler = nullptr;     /**< 事件执行的scheduler */
             Fiber::ptr fiber;                   /**< 事件协程 */
             std::function<void()> cb;           /**< 事件的回调函数 */
+
         };
 
         /**

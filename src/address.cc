@@ -1,11 +1,5 @@
 #include "sylar/address.hh"
-#include <string.h>
-#include <stdint.h>
-#include <vector>
 #include "sylar/log.hh"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <map>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include "sylar/endian.hh"
@@ -383,7 +377,7 @@ IPAddress::ptr IPv4Address::networkAddress(uint32_t prefix_len)
 
     sockaddr_in baddr(m_addr);
     baddr.sin_addr.s_addr &=
-        ~byteswapOnLittleEndian(CreateMask<uint32_t>(prefix_len));
+        byteswapOnLittleEndian(~CreateMask<uint32_t>(prefix_len));
     return IPv4Address::ptr(new IPv4Address(baddr));
 }
 
@@ -393,7 +387,7 @@ IPAddress::ptr IPv4Address::subnetMask(uint32_t perfix_len)
     memset(&subnet, 0, sizeof(subnet));
     subnet.sin_family = AF_INET;
     subnet.sin_addr.s_addr =
-        ~byteswapOnLittleEndian(CreateMask<uint32_t>(perfix_len));
+        byteswapOnLittleEndian(~CreateMask<uint32_t>(perfix_len));
     return IPv4Address::ptr(new IPv4Address(subnet));
 }
 
@@ -491,7 +485,7 @@ IPAddress::ptr IPv6Address::broadcastAddress(uint32_t prefix_len)
     // 模拟 ipv6
     sockaddr_in6 baddr(m_addr);
 
-    // Ex; prefiox=20, 20/8 = 2,表示从第二段开始跨段了, 20%8=4
+    // Ex; prefix=20, 20/8 = 2,表示从第二段开始跨段了, 20%8=4
     // 表示, 第2段的前4个字节是网络位的部分
 
     // 设置跨段地址的掩码

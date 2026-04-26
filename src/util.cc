@@ -93,13 +93,12 @@ auto FSUtil::MKDir(const std::string &dirname) -> bool
             break;
         }
     }
+    free(path);
 
     // ptr指针不为空, 或者最后一级目录创建失败的话
     if (ptr != nullptr || __MkDir(path) != 0) {
-        free(path);
         return false;
     }
-    free(path);
     return true;
 }
 
@@ -193,7 +192,7 @@ uint64_t GetCurrentUS()
     return tv.tv_sec * 1000 * 1000ul + tv.tv_usec;
 }
 
-bool OpenForRead(std::ifstream &ifs, const std::string &file_name,
+bool FSUtil::OpenForRead(std::ifstream &ifs, const std::string &file_name,
                  std::ios_base::openmode mode)
 {
     ifs.open(file_name.c_str(), mode);

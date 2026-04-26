@@ -10,18 +10,12 @@
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 
-// BUG: 全局添加相同的 sock,  就可能会出现错误
-// 主要是 addEvent 那里出现的问题, 但是找了找调用 addEvent 的地方
-// 简单排查之后, 发现涉及到了 hook, timer, 因此为了方便起见, 暂时先搁置这个bug,
-// 先只使用局部的sock
-//
-// 回顾: 直接使用全局sock似乎也行啊, 没有出错啊, 可能是直接测试的不对
-// 以防万一, 这里关于问题的注释不会删除, 保留下来, 防止有其他问题
+// // 设置全局的 sock,可能会出现多线程抢占资源，导致向相同的 fd 上添加了相同的事件
+// // 不要这样使用
 // int sock = 0;
 
 void test_fiber()
 {
-
     int sock = 0;
     SYLAR_LOG_INFO(g_logger) << "test_fiber sock= " << sock;
 

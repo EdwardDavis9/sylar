@@ -117,7 +117,7 @@ auto Application::init(int argc, char **argv) -> bool
     // 默认的配置路径位于: bin/conf/
     // 而默认的程序路径位于: bin/test/, 因此需要先返回上一级目录
     std::string conf_path = sylar::EnvMgr::GetInstance()->getAbsolutePath(
-        sylar::EnvMgr::GetInstance()->get("c", "../conf"));
+        sylar::EnvMgr::GetInstance()->get("c", "../../../../../conf/"));
 
     SYLAR_LOG_INFO(g_logger) << "load conf path:" << conf_path;
     sylar::Config::LoadFromConfDir(conf_path); // 加载配置文件

@@ -6,30 +6,32 @@
 namespace sylar {
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
-static thread_local Scheduler *t_scheduler =
+static thread_local Scheduler *t_current_scheduler =
     nullptr; // 标记当前线程所属的调度器
 
-// 当前线程对应的协程对象
-static thread_local Fiber *t_scheduler_fiber = nullptr;
+// 当前线程对应的主协程对象
+static thread_local Fiber *t_thread_main_fiber = nullptr;
 
 Scheduler::Scheduler(size_t threads, bool include_caller_thread, const std::string &name)
     : m_name(name)
 {
     SYLAR_ASSERT(threads > 0);
+    if(!m_name.empty()) {
+        sylar::Thread::SetName(m_name);
+    }
 
     if (include_caller_thread) {
-        sylar::Fiber::GetThis();
+        sylar::Fiber::GetCurrentFiber();
         --threads; // 当前线程也会被调度, 所以 总线程数 = 需要创建的线程数-1
 
-        SYLAR_ASSERT(GetThis() == nullptr);
+        SYLAR_ASSERT(GetCurrentScheduler() == nullptr);
 
-        t_scheduler = this;
+        t_current_scheduler = this;
 
         m_rootFiber.reset(new Fiber([this]() { this->run(); }, 0, true));
 
-        // sylar::Thread::SetName(m_name);
 
-        t_scheduler_fiber = m_rootFiber.get();
+        t_thread_main_fiber = m_rootFiber.get();
         m_rootThread      = sylar::GetThreadId();
         m_threadIds.push_back(m_rootThread);
     }
@@ -42,27 +44,17 @@ Scheduler::Scheduler(size_t threads, bool include_caller_thread, const std::stri
 Scheduler::~Scheduler()
 {
     SYLAR_ASSERT(m_stopping);
-    if (GetThis() == this) {
-        t_scheduler = nullptr;
+    if (GetCurrentScheduler() == this) {
+        t_current_scheduler = nullptr;
     }
 }
 
-Scheduler *Scheduler::GetThis()
+Scheduler *Scheduler::GetCurrentScheduler()
 {
-
-    // if(t_scheduler) {
-    //     return t_scheduler->shared_from_this().get();
-    // }
-
-    // Scheduler::ptr main_scheduler(new Scheduler);
-    // SYLAR_ASSERT(t_scheduler == main_scheduler.get());
-    // t_scheduler = main_scheduler.get();
-    // return t_scheduler->shared_from_this().get();
-
-    return t_scheduler;
+    return t_current_scheduler;
 }
 
-Fiber *Scheduler::GetMainFiber() { return t_scheduler_fiber; }
+Fiber *Scheduler::GetThreadMainFiber() { return t_thread_main_fiber; }
 
 void Scheduler::start()
 {
@@ -76,7 +68,7 @@ void Scheduler::start()
 
         m_threads.resize(m_threadCount);
 
-        // 线程池的创建, 绑定任务函数
+        // 线程池的创建, 每个线程都应绑定一个调度函数
         for (size_t i = 0; i < m_threadCount; ++i) {
             m_threads[i].reset(new Thread(
                 [this]() {
@@ -86,17 +78,12 @@ void Scheduler::start()
             m_threadIds.push_back(m_threads[i]->getId());
         }
     }
-
-    // if (m_rootFiber) {
-    //     m_rootFiber->call();
-    //     // m_rootFiber->swapIn();
-    //     SYLAR_LOG_INFO(g_logger) << "call out " << m_rootFiber->getState();
-    // }
 }
 
 void Scheduler::stop()
 {
     m_autoStop = true;
+    // 单线程的情况下， stop 只需要简单考虑是否存在任务以及考虑当前调度器的状态即可
     if (m_rootFiber && m_threadCount == 0
         && (m_rootFiber->getState() == Fiber::TERM
             || m_rootFiber->getState() == Fiber::INIT))
@@ -109,76 +96,63 @@ void Scheduler::stop()
         }
     }
 
-    // 调度器上下文检查
+    // 多线程的情况下， stop 需要考虑是否存在任务，当前调度器的状态以及其他的线程
+    // 确保是调度器协程所在的线程调用的 stop 函数
     if (m_rootThread != -1) {
-        // 存在调度器时
-        SYLAR_ASSERT(GetThis() == this);
+        SYLAR_ASSERT(GetCurrentScheduler() == this);
     }
     else {
         // 不存在调度器时, 不能自己调用停止, 防止死锁
-        SYLAR_ASSERT(GetThis() != this);
+        SYLAR_ASSERT(GetCurrentScheduler() != this);
     }
     m_stopping = true;
 
-    // 唤醒 idle 状态下的 worker
+    // 唤醒其他线程中的 idle 状态下的 worker 协程
     for (size_t i = 0; i < m_threadCount; ++i) {
         tickle();
     }
 
-    if (m_rootFiber) { // 唤醒 idle 状态的 rootFiber
+    if (m_rootFiber) {
+        // 防止 rootFiber 所在的线程 idle
         tickle();
-
-        // while(!stopping()) {
-        //     if(m_rootFiber->getState() == Fiber::TERM
-        //        || m_rootFiber->getState() == Fiber::EXCEPT) {
-        //         m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this),
-        //                                     0, true));
-        //         SYLAR_LOG_INFO(g_logger) << " root fiber is term, reset";
-
-        //         t_scheduler_fiber = m_rootFiber.get();
-        //     }
-        //     m_rootFiber->call();
-        // }
 
         if (!stopping()) {
             m_rootFiber->call();
-            // m_rootFiber->swapIn();
         }
     }
 
+    // 多线程的情况下， stop 是会 join 当前线程，等待其他线程退出
     std::vector<Thread::ptr> thrs;
     {
         MutexType::Lock lock(m_mutex);
         thrs.swap(m_threads);
     }
-
     for (auto &i : thrs) {
         i->join();
     }
 }
 
-void Scheduler::setThis() { t_scheduler = this; }
+void Scheduler::setCurrentScheduler() { t_current_scheduler = this; }
 
 void Scheduler::run()
 {
 
-    // 新创建的线程会创建自身的主线程, 但是不会创建调度线程
-    // 即此时, 只会存在一个调度线程, 但是可能存在多个主协程/idle协程/任务协程
+    // 在 start 函数中创建的线程（工作线程）不是调度线程，因此需要在这里创建并记录它们自己的主协程
     if (sylar::GetThreadId() != m_rootThread) {
-        t_scheduler_fiber = Fiber::GetThis().get();
+        t_thread_main_fiber = Fiber::GetCurrentFiber().get();
     }
 
     SYLAR_LOG_INFO(g_logger) << "run";
 
     set_hook_enable(true);
-    setThis();
+    setCurrentScheduler();
 
 
     // 创建了 idle 协程对象
     // Fiber::ptr idle_fiber(new Fiber(std::bind(&Scheduler::idle, this)));
     Fiber::ptr idle_fiber(new Fiber([this](){ this->idle();}));
 
-    // 创建回调的任务协程对象
+    // 声明一个智能指针，用于后续创建回调任务的协程对象, 此时仅是一个空指针对象
     Fiber::ptr cb_fiber;
 
     FiberAndThread ft; // 临时任务对象
@@ -276,15 +250,14 @@ void Scheduler::run()
                 cb_fiber.reset();
             }
         }
-        else { // 没有绑定任务的话, 执行 idle 任务
-            if (is_active) {
+        else { // 不存在任务的话, 执行 idle 任务
+            if (is_active) { // 防御性处理：避免某些情况下异常的出现
                 --m_activeThreadCount;
                 continue;
             }
             if (idle_fiber->getState() == Fiber::TERM) {
                 SYLAR_LOG_INFO(g_logger) << "idle fiber term";
                 break;
-                // continue;
             }
 
             ++m_idleThreadCount;

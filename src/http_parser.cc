@@ -121,7 +121,27 @@ namespace http {
 	}
 
 	void on_request_header_done(void * data, const char* at, size_t length) {
-		//HttpRequestParser* parser = static_cast<HttpRequestParser*>(data);
+		HttpRequestParser* parser = static_cast<HttpRequestParser*>(data);
+
+    uint8_t version = parser->getData()->getVersion();
+    std::string conn = parser->getData()->getHeader("Connection");
+    if (version == 0x10) {
+        // HTTP/1.0 默认短连接
+        if (strcasecmp(conn.c_str(), "keep-alive") != 0) {
+            parser->getData()->setClose(true);
+        }
+    } else {
+        // HTTP/1.1 默认长连接
+        if (strcasecmp(conn.c_str(), "close") == 0) {
+            parser->getData()->setClose(true);
+        } else {
+            parser->getData()->setClose(false);
+        }
+    }
+
+    // SYLAR_DEBUG_INFO(SYLAR_LOG_NAME("system")) << "DEBUG: version=" << (int)parser->getData()->getVersion()
+    //                      << " close=" << parser->getData()->isClose();
+
 	}
 
 	void on_request_http_field(void *data, const char* filed, size_t flen,
@@ -202,6 +222,10 @@ namespace http {
 	}
 
 	void on_response_header_done(void *data, const char* at, size_t length) {
+
+			// 同步连接关闭标志
+			HttpResponseParser* parser = static_cast<HttpResponseParser*>(data);
+			parser->getData()->setClose(parser->getParser().close);
 	}
 
 	void on_response_last_chunk(void *data, const char* at, size_t length) {
@@ -236,9 +260,14 @@ namespace http {
 
 	size_t HttpResponseParser::execute(char* data, size_t len, bool chunck) {
 		// chunk 是长度头+数据块，每次都需要重新进行解析
-		if(chunck) { // 是分块的话, 就需要重新解析
+		if(chunck) {
+				// 是分块的话, 就需要重新解析, 因为 chunked 的数据需要重新去解析，才能识别到重复的字段内容： 长度头＋数据
 			httpclient_parser_init(&m_parser);
 		}
+
+		// 实际上这里的行为是解析 chunked 的 size 头，然后返回长度，接下来直接 memove 进行覆盖， 这样将数据保留了下来
+		// 具体细节直接看那个 ragel 的解析规则， 以及 execute 的调用代码吧，会发现到后面直接 read data 了
+		// 即直接读取剩下的数据
 		size_t offset = httpclient_parser_execute(&m_parser, data, len, 0);
 		memmove(data, data+offset, len-offset);
 

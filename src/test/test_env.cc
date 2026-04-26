@@ -14,6 +14,7 @@ struct A {
 
         ifs.read(&content[0], content.size());
         content.resize(ifs.gcount());
+        // std::cout << content << "____|||||||" << std::endl;
 
         for(size_t i = 0; i < content.size(); ++i) {
             std::cout << i << " - " << content[i] << " - " << (int)content[i] << std::endl;

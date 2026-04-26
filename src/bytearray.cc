@@ -110,25 +110,11 @@ void ByteArray::writeFuint64(uint64_t value)
 }
 
 static uint32_t EncodingZigzag32(const int32_t& v) {
-
 	return (uint32_t)((v << 1) ^ (v >> (sizeof(v) * 8 - 1)));
-
-	// if(v < 0) {
-	// 	return (uint32_t)((v << 1) ^ (v >> 31));
-	// } else {
-	// 	return v << 1;
-	// }
 }
 
 static uint64_t EncodingZigzag64(const int64_t& v) {
-
 	return (uint64_t)((v << 1) ^ (v >> (sizeof(v) * 8 - 1)));
-
-	// if(v < 0) {
-	// 	return (uint64_t)((v << 1) ^ (v >> 63));
-	// } else {
-	// 	return v << 1;
-	// }
 }
 
 static int32_t DecodingZigzag32(const uint32_t& v) {
@@ -152,7 +138,7 @@ void ByteArray::writeUint32(uint32_t value)
 	while(value >= 0x80) {
 		// 大于128的话,就需要多个字节存储了
 		tmp[i++] = (value & 0x7F) | 0x80;
-		// 这里 & 0x80,即 msb=1 表示后续还有多余字节
+		// 这里 | 0x80,即 msb=1 表示后续还有多余字节
 
 		value >>= 7;
 	}
@@ -161,6 +147,7 @@ void ByteArray::writeUint32(uint32_t value)
 	tmp[i++] = value;
 	write(tmp, i);
 }
+
 void ByteArray::writeInt64(int64_t value)
 {
 	writeUint64(EncodingZigzag64(value));
@@ -413,14 +400,14 @@ void ByteArray::write(const void *buf, size_t size)
 void ByteArray::read(void *buf, size_t read_size)
 {
 	if(read_size > getSizeForRead()){
-		throw std::out_of_range("not enough len");
+		throw std::out_of_range("not enough len to read");
 	}
 
-	size_t npos = m_position % m_baseSize; // node 中的位置
-	size_t ncap = m_cur->size - npos; // node 的剩余可读容量
+		size_t npos = m_position % m_baseSize; // node 中的位置
+		size_t ncap = m_cur->size - npos; // node 的剩余可读容量
 	size_t bpos = 0; // buffer 的读偏移
-	while(read_size > 0) {
-		if(ncap >= read_size) {
+		while(read_size > 0) {
+				if(ncap >= read_size) {
 			memcpy((char*)buf+bpos, m_cur->ptr + npos,  read_size);
 			if(m_cur->size == (npos+read_size)) {
 				m_cur = m_cur->next;
@@ -469,7 +456,8 @@ void ByteArray::readForPeekAt(void* buf,
 															size_t read_size,
 															size_t position) const
 {
-    if(read_size > (m_size - position)) {
+    // if(read_size > (m_size - position)) {
+    if(read_size > getSizeForRead()) {
         throw std::out_of_range("not enough len");
     }
 
@@ -657,7 +645,7 @@ uint64_t ByteArray::getReadBuffersAt(std::vector<iovec> &buffers,
 	uint64_t size = len;
 	size_t npos = position % m_baseSize;
 	size_t count = position / m_baseSize;
-	Node*cur = m_root;;
+	Node*cur = m_root;
 	while(count--) { cur = cur->next; }
 	if(!cur) return 0;
 

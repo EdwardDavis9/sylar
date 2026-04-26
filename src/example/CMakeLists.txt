@@ -1,20 +1,25 @@
 project(echo_server)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/example)
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/example)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/example)
 
+
+set(PROJECT_NAME "echo_client_udp")
 set(
   MAIN_EXAMPLE
-  ./echo_server.cc
+  # ./echo_server.cc
   # ./echo_client.cc
   # ./sample_server.cc
   # ./echo_server_udp.cc
   # ./echo_client_udp.cc
+  ./${PROJECT_NAME}.cc
   )
 
 add_executable(${PROJECT_NAME} ${MAIN_EXAMPLE})
 
 add_dependencies(${PROJECT_NAME} sylar-src)
+
+target_include_directories (
+  ${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include )
 
 target_link_libraries(
   ${PROJECT_NAME}

@@ -1,8 +1,11 @@
 #include "sylar/fd_manager.hh"
 #include "sylar/hook.hh"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/socket.h>
 
 namespace sylar {
 

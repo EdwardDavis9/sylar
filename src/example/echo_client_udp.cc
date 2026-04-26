@@ -25,7 +25,7 @@ void run()
         sylar::Address::ptr addr(new sylar::IPv4Address);
         SYLAR_LOG_INFO(g_logger) << "begin recv";
         while (true) {
-            char buff[102];
+            char buff[1024];
             int len = sock->recvFrom(buff, 1024, addr);
             if (len > 0) {
                 std::cout << std::endl

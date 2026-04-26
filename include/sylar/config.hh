@@ -549,8 +549,6 @@ class Config {
         }
 
         return std::dynamic_pointer_cast<ConfigVar<T>>(it->second);
-        // return std::static_pointer_cast<ConfigVar<T>>(it->second);
-        // 使用这个, 效率好一点, 编译期进行类型转换
     }
 
     /**

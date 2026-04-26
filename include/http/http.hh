@@ -2,14 +2,8 @@
 #define __SYLAR_HTTP_H__
 
 #include <memory>
-#include <string>
 #include <map>
-#include <stdint.h>
-#include <fstream>
 #include <boost/lexical_cast.hpp>
-
-#include "http/http11_parser.hh"
-#include "http/httpclient_parser.hh"
 
 namespace sylar {
 
@@ -241,7 +235,7 @@ class HttpRequest {
      * @param[in] version 版本
      * @param[in] close 是否 keepalive
      */
-    HttpRequest(uint8_t version = 0x11, bool close = true);
+    HttpRequest(uint8_t version = 0x11, bool close = false);
 
     /**
      * @brief 返回 HTTP 方法
@@ -474,7 +468,7 @@ class HttpRequest {
     template <class T>
     bool checkGetCookieAs(const std::string &key, T &val, const T &def = T())
     {
-        return checkGetAs(m_headers, key, val, def);
+        return checkGetAs(m_cookies, key, val, def);
     }
 
     /**
@@ -517,7 +511,7 @@ class HttpResponse {
      * @param[in] version 版本
      * @param[in] close 是否自动关闭
      */
-    HttpResponse(uint8_t version = 0x11, bool close = true);
+    HttpResponse(uint8_t version = 0x11, bool close = false);
 
     /**
      * @brief  返回响应状态

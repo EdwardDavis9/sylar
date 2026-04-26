@@ -11,7 +11,7 @@ static sylar::Logger::ptr g_logger = SYLAR_LOG_ROOT();
 class EchoServer : public sylar::TcpServer{
 public:
 	EchoServer(int type);
-	void handleClient(sylar::Socket::ptr client);
+	void handleClient(sylar::Socket::ptr client) override;
 
 private:
 	int m_type {0};
@@ -42,6 +42,7 @@ void EchoServer::handleClient(sylar::Socket::ptr client) {
 			break;
 		}
 
+		// 更新一下字节链表的实际的长度
 		ba->setPosition(ba->getPosition() + rt);
 		ba->setPosition(0);
 
@@ -57,6 +58,8 @@ void EchoServer::handleClient(sylar::Socket::ptr client) {
 			std::cout << ba->toHexString();
 		}
 		std::cout.flush();
+
+		client->send(ba->toString().c_str(), rt);
 	}
 }
 
@@ -76,8 +79,6 @@ void run() {
 int main(int argc, char* argv[]) {
 	if(argc < 2) {
 
-		// 用法：grep [选项]... 模式 [文件]...
-		// 请尝试执行 "grep --help" 来获取更多信息。
 		SYLAR_LOG_INFO(g_logger) << "Usage: " << argv[0] << " [mode: -t or -b]";
 
 		// SYLAR_LOG_INFO(g_logger) << "used as[" << argv[0] << " -t] or ["

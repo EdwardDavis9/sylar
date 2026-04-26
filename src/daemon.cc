@@ -17,8 +17,8 @@ std::string ProcessInfo::toString() const
 {
     std::stringstream ss;
     ss << "[ProcessInfo parent_id=" << parent_id << " main_id=" << main_id
-       << " parent_start_time" << sylar::Time2Str(parent_start_time)
-       << " main_start_time" << sylar::Time2Str(main_start_time)
+       << " parent_start_time=" << sylar::Time2Str(parent_start_time)
+       << " main_start_time=" << sylar::Time2Str(main_start_time)
        << " restart_count=" << restart_count << "]";
     return ss.str();
 };
@@ -40,7 +40,7 @@ static int real_daemon(int argc, char **argv,
     while (true) {
         pid_t pid = fork();
 
-        ProcessInfoMgr::GetInstance()->toString();
+        SYLAR_LOG_DEBUG(g_logger) << ProcessInfoMgr::GetInstance()->toString();
 
         if (pid == 0) {
             ProcessInfoMgr::GetInstance()->main_id         = getpid();

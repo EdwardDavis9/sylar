@@ -11,14 +11,9 @@
 #define __SYLAR_ADDRESS_H__
 
 #include <memory>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <netinet/in.h>
-#include <iostream>
 #include <map>
 #include <vector>
-#include <stdint.h>
 #include <sys/un.h>
 
 namespace sylar {

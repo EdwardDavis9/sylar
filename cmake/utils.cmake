@@ -41,7 +41,8 @@ function(ragelmaker src_rl outputlist outputdir)
     # set generate target file cmd
     add_custom_command(
         OUTPUT ${rl_out}
-        COMMAND ragel ${src_rl} -o ${rl_out} -l -C -G2  --error-format=msvc
+        # COMMAND ragel ${src_rl} -o ${rl_out} -l -C -G2  --error-format=msvc
+        COMMAND ragel ${src_rl} -o ${rl_out} -l -L -G2  --error-format=msvc
         DEPENDS ${src_rl}
         )
     set_source_files_properties(${rl_out} PROPERTIES GENERATED TRUE)

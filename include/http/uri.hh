@@ -27,7 +27,7 @@ namespace sylar {
      userinfo      = *( unreserved / pct-encoded / sub-delims / ":" )
      host          = IP-literal / IPv4address / reg-name
      port          = *DIGIT
-* */
+*/
 namespace http {
 /**
  * @class Uri

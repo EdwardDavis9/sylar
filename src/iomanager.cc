@@ -4,8 +4,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 
 namespace sylar {
@@ -21,7 +21,8 @@ IOManager::FdContext::getContext(IOManager::Event event)
         case IOManager::WRITE:
             return write;
         default:
-            SYLAR_ASSERT2(false, "getContext invalid event: " + std::to_string(static_cast<int>(event)));
+            SYLAR_ASSERT2(false, "getContext invalid event: "
+                                     + std::to_string(static_cast<int>(event)));
             throw std::invalid_argument("Invalid event type in getContext");
     }
 }
@@ -35,7 +36,6 @@ void IOManager::FdContext::resetContext(EventContext &ctx)
 
 void IOManager::FdContext::triggerEvent(IOManager::Event event)
 {
-
     SYLAR_ASSERT(events & event);
     events            = static_cast<Event>(events & ~event);
     EventContext &ctx = getContext(event);
@@ -50,9 +50,8 @@ void IOManager::FdContext::triggerEvent(IOManager::Event event)
     return;
 }
 
-IOManager::IOManager(size_t threads,
-					 bool include_caller_thread,
-					 const std::string &name)
+IOManager::IOManager(size_t threads, bool include_caller_thread,
+                     const std::string &name)
     : Scheduler(threads, include_caller_thread, name)
 {
     m_epfd = epoll_create(500);
@@ -97,11 +96,10 @@ IOManager::~IOManager()
     close(m_tickleFds[1]);
 
     for (auto &i : m_fdContexts) {
-        if(i) {
+        if (i) {
             delete i;
         }
     }
-
 }
 
 int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
@@ -125,8 +123,8 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     FdContext::MutexType::Lock lock2(fd_ctx->mutex);
     if (fd_ctx->events & event) {
         SYLAR_LOG_ERROR(g_logger)
-            << "Exist error: addEvent assert fd = " << fd << " event = " << event
-            << " fd_ctx.event =" << fd_ctx->events;
+            << "Exist error: addEvent assert fd = " << fd
+            << " event = " << event << " fd_ctx.event =" << fd_ctx->events;
 
         SYLAR_ASSERT(!(fd_ctx->events & event));
     }
@@ -134,14 +132,10 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     // 构造 epoll_event 并注册事件
     int op = fd_ctx->events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
     epoll_event epevent;
-    if(op == EPOLL_CTL_MOD) {
-        epevent.events = EPOLLET | fd_ctx->events | event;
-    } else if(op & EPOLL_CTL_ADD){
-        epevent.events = EPOLL_FLAGS | fd_ctx->events | event;
-    }
+    // epevent.events = EPOLLET;
+    epevent.events   = EPOLLET | fd_ctx->events | event;
     epevent.data.ptr = fd_ctx;
-
-    int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+    int rt           = epoll_ctl(m_epfd, op, fd, &epevent);
 
     if (rt) {
         SYLAR_LOG_ERROR(g_logger)
@@ -156,16 +150,17 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb)
     fd_ctx->events = static_cast<Event>(fd_ctx->events | event);
 
     // 获取刚才添加的事件上下文, 然后添加调度器, 协程, 回调函数
+    // 同一个文件描述符的同一类事件（读或写）不允许重复注册
     FdContext::EventContext &event_ctx = fd_ctx->getContext(event);
     SYLAR_ASSERT(!event_ctx.scheduler && !event_ctx.fiber && !event_ctx.cb);
 
-    event_ctx.scheduler = Scheduler::GetThis();
+    event_ctx.scheduler = Scheduler::GetCurrentScheduler();
 
     if (cb) {
         event_ctx.cb.swap(cb);
     }
     else {
-        event_ctx.fiber = Fiber::GetThis(); // 保存返回点的上下文
+        event_ctx.fiber = Fiber::GetCurrentFiber(); // 保存返回点的上下文
         SYLAR_ASSERT2(event_ctx.fiber->getState() == Fiber::EXEC,
                       "state=" << event_ctx.fiber->getState());
     }
@@ -188,7 +183,7 @@ bool IOManager::delEvent(int fd, Event event)
         return false;
     }
 
-	// 将数据按位取反, 然后与原来的 events 做与操作,  即删除原来的事件
+    // 将数据按位取反, 然后与原来的 events 做与操作,  即删除原来的事件
     Event new_events = static_cast<Event>(fd_ctx->events & ~event);
     int op           = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
     epoll_event epevent;
@@ -292,31 +287,24 @@ bool IOManager::cancelAll(int fd)
 
 IOManager *IOManager::GetThis()
 {
-    return dynamic_cast<IOManager *>(Scheduler::GetThis());
-    //  Scheduler* sched = Scheduler::GetThis();
-    // IOManager* iom = dynamic_cast<IOManager*>(sched);
-    // if (!iom) {
-    //     SYLAR_LOG_ERROR(g_logger) << "Current Scheduler is not IOManager!";
-    // }
-    // return iom;
+    return dynamic_cast<IOManager *>(Scheduler::GetCurrentScheduler());
 }
 
 void IOManager::tickle()
 {
-    if (hasIdleThreads()) {
+    if (!hasIdleThreads()) {
         return;
     }
     int rt = write(m_tickleFds[1], "T", 1);
     SYLAR_ASSERT(rt == 1);
 }
 
-bool IOManager::stopping(uint64_t& timeout)
+bool IOManager::stopping(uint64_t &timeout)
 {
     timeout = getNextTimer();
 
-    return timeout == ~0ull
-        && m_pendingEventCount == 0
-        && Scheduler::stopping();
+    return timeout == ~0ull && m_pendingEventCount == 0
+           && Scheduler::stopping();
 }
 
 bool IOManager::stopping()
@@ -328,7 +316,7 @@ bool IOManager::stopping()
 void IOManager::idle()
 {
     SYLAR_LOG_DEBUG(g_logger) << "idle";
-    epoll_event *events = new epoll_event[64]();
+    epoll_event *events = new epoll_event[256]();
     std::shared_ptr<epoll_event> shared_events(
         events, [](epoll_event *ptr) { delete[] ptr; });
 
@@ -338,7 +326,7 @@ void IOManager::idle()
 
     while (true) {
         uint64_t next_timeout = 0;
-        if(stopping(next_timeout)) {
+        if (stopping(next_timeout)) {
             SYLAR_LOG_INFO(g_logger)
                 << "name=" << getName() << " idle stopping exit";
             break;
@@ -351,11 +339,13 @@ void IOManager::idle()
 
         do {
             // 最大超时时间
-            static  const int MAX_TIMEOUT = 3000;
-            if(next_timeout != ~0ull) {
+            static const int MAX_TIMEOUT = 3000;
+            if (next_timeout != ~0ull) {
                 next_timeout = static_cast<int>(next_timeout) > MAX_TIMEOUT
-                    ? MAX_TIMEOUT : next_timeout;
-            } else {
+                                   ? MAX_TIMEOUT
+                                   : next_timeout;
+            }
+            else {
                 next_timeout = MAX_TIMEOUT;
             }
             rt = epoll_wait(m_epfd, events, 64, static_cast<int>(next_timeout));
@@ -366,9 +356,9 @@ void IOManager::idle()
             }
         } while (true);
 
-        std::vector<std::function<void()> > cbs;
+        std::vector<std::function<void()>> cbs;
         listExpiredCb(cbs);
-        if(!cbs.empty()) {
+        if (!cbs.empty()) {
             schedule(cbs.begin(), cbs.end());
             cbs.clear();
         }
@@ -381,8 +371,11 @@ void IOManager::idle()
 
                 while (read(m_tickleFds[0], &dummy, 1) == 1)
                     ;
-                // 这里会产生一个错误, 非阻塞式读取了一个内容,因此会设置了errno, 因此后续需要进行恢复
-                // SYLAR_LOG_INFO(g_logger) << "read ===2" << " errno=" << errno
+                // 这里会产生一个错误, 非阻塞式读取了一个内容,因此会设置了errno,
+                // 因此后续需要进行恢复
+                //
+                // SYLAR_LOG_INFO(g_logger) << "read ===2"
+                //                          << " errno=" << errno
                 //                          << ", error_msg="<<strerror(errno);
 
                 errno = saved_errno; // 恢复之前的errno
@@ -432,8 +425,8 @@ void IOManager::idle()
             }
         }
 
-		// 让当前线程 主动让出执行权
-        Fiber::ptr cur = Fiber::GetThis();
+        // 让当前线程 主动让出执行权
+        Fiber::ptr cur = Fiber::GetCurrentFiber();
         auto raw_ptr   = cur.get();
         cur.reset();
 
@@ -441,8 +434,6 @@ void IOManager::idle()
     }
 }
 
-void IOManager::onTimerInsertedAtFront() {
-    tickle();
-}
+void IOManager::onTimerInsertedAtFront() { tickle(); }
 
 }; // namespace sylar

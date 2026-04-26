@@ -6,8 +6,12 @@
 #include "sylar/iomanager.hh"
 #include "sylar/fd_manager.hh"
 #include "sylar/log.hh"
-#include <stdarg.h>
 #include "sylar/macro.hh"
+
+#include <stdarg.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
 
 sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
@@ -47,7 +51,10 @@ void hook_init()
         return;
     }
 
-// HOOK 的关键
+// HOOK 的关键, 保存原函数的地址
+// sleep_f = (sleep_fun)dlsym(RTLD_NEXT, "sleep");
+// nanosleep_f = (nanosleep_fun)dlsym(RTLD_NEXT, "nanosleep");
+// ...
 #define XX(name) name##_f = (name##_fun)dlsym(RTLD_NEXT, #name);
     HOOK_FUN(XX);
 #undef XX
@@ -83,7 +90,7 @@ struct timer_info {
     int cancelled = 0;
 };
 
- /**
+/**
  * @brief   执行IO操作的模板函数,实现了协程化异步IO
  * @details 该函数是sylar框架Hook系统的核心,负责将同步阻塞的IO操作
  *          转换为异步非阻塞的协程化操作.处理了超时,信号中断,协程调度等复杂逻辑.
@@ -142,7 +149,7 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name,
 
     // 如果当前 fd 的上下文被关闭, 那么设置错误信息
     if (ctx->isClose()) {
-        errno = EBADF; // errno 为 EBADF(Bad file descriptor)
+        errno = EBADF;
         return -1;
     }
 
@@ -167,7 +174,8 @@ retry:
         n = fun(fd, std::forward<Args>(args)...);
     }
 
-    // 如果是 EAGAIN(资源暂时不可用, 非阻塞IO常见返回), 阻塞状态, 进入等待事件流程
+    // 如果是 EAGAIN(资源暂时不可用, 非阻塞IO常见返回), 阻塞状态,
+    // 进入等待事件流程
     if (n == -1 && errno == EAGAIN) {
 
         // 获取当前线程的 iomanager. 即事件调度器
@@ -192,7 +200,8 @@ retry:
                 winfo); // 条件变量: 定时器只在未取消状态下有效
         }
 
-        // 添加一个IO事件监听, 比如 EPOLLIN(读) 或 EPOLLOUT(写), 因为无论accpet成功与否都会进行通知
+        // 添加一个IO事件监听, 比如 EPOLLIN(读) 或 EPOLLOUT(写),
+        // 因为无论accpet成功与否都会进行通知
         int rt = iom->addEvent(fd, (sylar::IOManager::Event)(event));
 
         if (SYLAR_UNLICKLY(rt)) {
@@ -209,26 +218,19 @@ retry:
             // 让出协程的执行权
             sylar::Fiber::YieldToHold();
 
-
             // epoll_wait 监听到对应的事件发生后
             // 会在 idle 中返回到 schedule,最后在正常回调回来
             if (condition_timer_to_cancel_event) {
                 condition_timer_to_cancel_event->cancel();
             }
             if (tinfo->cancelled) {
+                // 如果设置了这个标识，说明超时了，因此需要报告一下
                 errno = tinfo->cancelled;
                 return -1;
             }
-
-            // SYLAR_ASSERT(sylar::Fiber::GetThis()->getState()
-            //              == sylar::Fiber::EXEC);
             goto retry;
         }
     }
-
-    // if (n >= 0) {
-    //     errno = 0;  // 清除错误码
-    // }
 
     return n;
 }
@@ -244,8 +246,8 @@ unsigned int sleep(unsigned int seconds)
         return sleep_f(seconds);
     }
 
-    sylar::Fiber::ptr fiber = sylar::Fiber::GetThis();
-    sylar::IOManager *iom = sylar::IOManager::GetThis();
+    sylar::Fiber::ptr fiber = sylar::Fiber::GetCurrentFiber();
+    sylar::IOManager *iom   = sylar::IOManager::GetThis();
     iom->addTimer(seconds * 1000, [iom, fiber]() { iom->schedule(fiber, -1); });
 
     sylar::Fiber::YieldToHold();
@@ -258,7 +260,7 @@ int usleep(useconds_t usec)
         return usleep_f(usec);
     }
 
-    sylar::Fiber::ptr fiber = sylar::Fiber::GetThis();
+    sylar::Fiber::ptr fiber = sylar::Fiber::GetCurrentFiber();
     sylar::IOManager *iom   = sylar::IOManager::GetThis();
     iom->addTimer(usec / 1000, [iom, fiber]() { iom->schedule(fiber, -1); });
     sylar::Fiber::YieldToHold();
@@ -272,9 +274,9 @@ int nanosleep(const struct timespec *rqtp, struct timespec *rmtp)
         return nanosleep_f(rqtp, rmtp);
     }
 
-    int timeout_ms = rqtp->tv_sec * 1000 + rmtp->tv_nsec / 1000 / 1000;
+    int timeout_ms = rqtp->tv_sec * 1000 + rqtp->tv_nsec / 1000 / 1000;
 
-    sylar::Fiber::ptr fiber = sylar::Fiber::GetThis();
+    sylar::Fiber::ptr fiber = sylar::Fiber::GetCurrentFiber();
     sylar::IOManager *iom   = sylar::IOManager::GetThis();
     iom->addTimer(timeout_ms, [iom, fiber]() { iom->schedule(fiber, -1); });
 
@@ -377,7 +379,7 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
 
     // 检查异步回来的连接是否失败
     int error     = 0;
-    socklen_t len = sizeof(int);
+    socklen_t len = sizeof(error);
     if (-1 == getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len)) {
         return -1;
     }

@@ -49,16 +49,15 @@ void Thread::SetName(const std::string &name)
 }
 
 Thread::Thread(std::function<void()> cb, const std::string &name)
-    : m_cb(cb), m_name(name) {
+    : m_cb(cb), m_name(name+std::to_string(++s_thread_count)) {
     if (name.empty()) {
         m_name = "UNKNOWN";
     }
 
     int rt = pthread_create(&m_thread, nullptr, &Thread::run, this);
     if (rt) {
-        SYLAR_LOG_ERROR(g_logger)
-            << "pthread_create thread fail, rt = " << rt << " name = "
-			<< name;
+        SYLAR_LOG_ERROR(g_logger) << "pthread_create thread fail, rt = "
+                                  << rt << " name = " << name;
         throw std::logic_error("pthread_create error");
     }
     m_semaphore.wait(); // 等待线程运行 run 来初始化自身资源, 例如 name, ptr...
@@ -90,7 +89,7 @@ void *Thread::run(void *arg)
 {
     Thread *thread = static_cast<Thread *>(arg);
     t_thread       = thread;
-    t_thread_name  = thread->m_name + std::to_string(++s_thread_count);
+    t_thread_name  = thread->m_name;
 
     thread->m_id = sylar::GetThreadId();
 
